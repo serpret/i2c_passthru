@@ -48,7 +48,8 @@ module i2c_passthru_sda_mismatch #(
 	input i_padin_sig, //signal coming into FPGA
 	input i_padout_sig, //signal leaving FPGA
 	
-	output o_mismatch
+	output o_mismatch,
+	output o_t_su_dat_good
 
 );
 	reg [WIDTH_F_REF-1:0] timer, nxt_timer;
@@ -68,9 +69,10 @@ module i2c_passthru_sda_mismatch #(
 	assign change_padout_sig = ( prev_padout_sig != i_padout_sig);
 	assign change_padin_sig  = ( prev_padin_sig  != i_padin_sig );
 	
-	localparam ST_MATCH    = 0;
-	localparam ST_WAIT     = 1;
-	localparam ST_MISMATCH = 2;
+	localparam ST_MATCH           = 0;
+	localparam ST_WAIT            = 1;
+	localparam ST_MISMATCH        = 2;
+	localparam ST_MATCH_WAIT_T_SU = 3;
 	
 	//FSM next state and output logic
 	always @(*) begin

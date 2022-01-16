@@ -49,8 +49,12 @@ module i2c_passthru_bittx (
 
 )
 (
-	input i_clk,
-	input i_rstn,
+	input i_clk,  // clock
+	input i_rstn, // synchronous active low reset
+	
+	//reference frequency for timing 
+	//(periodic signal, rising edges are used for timing)
+	input i_f_ref,
 	
 	input i_start_tx
 	input i_tx_is_to_mst
@@ -77,18 +81,46 @@ module i2c_passthru_bittx (
 	reg [?:0] state, nxt_state;
 	reg tx_to_mst, nxt_tx_to_mst;
 	wire sda_mismatch;
+	
+	reg prev_f_ref;
+	wire pulse_ref;
+	
+	reg [WIDTH_F_REF_T_LOW -1:0]  timer_t_low, nxt_timer_t_low; //timers
+	reg [WIDTH_F_REF_SU_DAT-1:0]  timer_t_su , nxt_timer_t_su ; //timers
+	wire timer_t_low_tc ; // terminal count for timers
+	wire timer_t_su_tc  ; // terminal count for timers
+	reg  timer_t_low_rst; // resets for timers
+	reg  timer_t_su_rst ; // resets for timers
+	
+	assign 	pulse_ref = ~prev_f_ref && i_f_ref;
+	assign timer_t_low_tc = timer_t_low == 0;
+	assign timer_t_su_tc  = timer_t_su  == 0;
+
+	
+	always @(*) begin
+		if( timer_t_low_rst )                  nxt_timer_t_low = F_REF_T_LOW;
+		else if( pulse_ref && ~timer_t_low_tc) nxt_timer_t_low = timer_t_low - 1'b1;
+		else                                   nxt_timer_t_low = timer_t_low;
+	end
+	
+	always @(*) begin
+		if( timer_t_su_rst )                  nxt_timer_t_su = F_REF_T_SU_DAT;
+		else if( pulse_ref && ~timer_t_su_tc) nxt_timer_t_su = timer_t_su - 1'b1;
+		else                                  nxt_timer_t_su = timer_t_su;
+	end
 
 
-	localparam ST_IDLE             = 0  :
-	localparam ST_SCL0_A           = 1  :
-	localparam ST_SCL0_B           = 2  :
-	localparam ST_SCL1_A_TX2MST    = 3  :
-	localparam ST_SCL1_A_INIT      = 4  :
-	localparam ST_SCL1_B_WAIT      = 5  :
-	localparam ST_SCL1_C_MID       = 6  :
-	localparam ST_SCL1_D_WAIT      = 7  :
-	localparam ST_SCL1_E_FIN       = 8  :
-	localparam ST_SCL1_F_VIOLATION = 9  :
+
+	localparam ST_IDLE             = 0  ;
+	localparam ST_SCL0_A           = 1  ;
+	localparam ST_SCL0_B           = 2  ;
+	localparam ST_SCL1_A_TX2MST    = 3  ;
+	localparam ST_SCL1_A_INIT      = 4  ;
+	localparam ST_SCL1_B_WAIT      = 5  ;
+	localparam ST_SCL1_C_MID       = 6  ;
+	localparam ST_SCL1_D_WAIT      = 7  ;
+	localparam ST_SCL1_E_FIN       = 8  ;
+	localparam ST_VIOLATION        = 9  ;
 	
 	//FSM next state and output logic
 	always @(*) begin
@@ -98,6 +130,9 @@ module i2c_passthru_bittx (
 		
 		o_tx_done   = 0;
 		o_violation = 0;
+		
+		timer_t_low_rst = 0;
+		timer_t_su_rst  = 0;
 		
 		case( state) 
 		
@@ -117,7 +152,7 @@ module i2c_passthru_bittx (
 				o_scl = 0;
 				o_sda = i_rx_sda_init;
 				
-				if( i_start_tx) nxt_state = ST_SCL0_A;
+				if( i_start_tx) nxt_state = ST_SCL0_B;
 			end
 			
 			ST_SCL0_B             :
@@ -137,11 +172,16 @@ module i2c_passthru_bittx (
 				o_scl = 1;
 				o_sda = i_rx_sda_init;
 				
-				if( sda_mis
+				if( sda_mismatch) nxt_state = ST_VIOLATION;
+				else if ( ~i_scl) nxt_state = ST_IDLE;
 			end
 			
 			ST_SCL1_A_INIT        :
 			begin
+				o_scl = 1;
+				o_sda = i_rx_sda_init;
+				
+				if( 
 			end
 			
 			ST_SCL1_B_WAIT        :
@@ -160,7 +200,7 @@ module i2c_passthru_bittx (
 			begin
 			end
 			
-			ST_SCL1_F_VIOLATION   :
+			ST_VIOLATION          :
 			begin
 				o_violation = 1;
 
@@ -172,6 +212,7 @@ module i2c_passthru_bittx (
 			
 		endcase
 	end
+	
 	
 	
 	
@@ -208,7 +249,8 @@ module i2c_passthru_bittx (
 	
 	//sequential logic without reset
 	always @(posedge i_clk) begin
-		tx_to_mst <= nxt_tx_to_mst;
+		tx_to_mst  <= nxt_tx_to_mst;
+		prev_f_ref <= i_f_ref;
 	end
 	
 

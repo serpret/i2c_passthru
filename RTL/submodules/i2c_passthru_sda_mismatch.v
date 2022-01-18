@@ -24,20 +24,24 @@
 
 //detect if signal input and output mismatch (usefull for checking slow changing
 //signals like opendrain to see if some other "master" is holding the bus).
-//Uses timeout after pad output change to determine if there is mismatch
+//Uses timeout after pad output change to determine if there is mismatch.
+//Also output o_sda_good if sda has not changed for F_REF_T_SU_DAT time.
 module i2c_passthru_sda_mismatch #(
 
 	//F_REF values should always be at least 2.
 	
-	//number of periods of i_f_ref required for smbus t_r timing
-	//example: for t_r=1us and i_f_ref is 8mhz
+	//number of periods of i_f_ref required for smbus timing
+	//example: for t_r=1us ( rise time) and i_f_ref is 8mhz
 	// 8mhz * 1us = 8
-	// set to greater than 8 (recommend double just in case)
-	parameter F_REF_T_R =15,
+	// set to greater than 8
+	parameter F_REF_T_R =15,        // t_r rise time
+	parameter F_REF_T_SU_DAT  =  2, // t_su:dat dat setup time minimum
+
 	
 	//WIDTH required to binary count largest F_REF value above.
 	// calculation: CEILING ( LOG2 ( F_REF+1) )
-	parameter WIDTH_F_REF = 4
+	parameter WIDTH_F_REF_T_R      = 4,
+	parameter WIDTH_F_REF_T_SU_DAT = 2
 	
 	
 ) (
@@ -45,29 +49,41 @@ module i2c_passthru_sda_mismatch #(
 	input i_rstn,
 	input i_f_ref,
 	
-	input i_padin_sig, //signal coming into FPGA
+	input i_padin_sig , //signal coming into FPGA
 	input i_padout_sig, //signal leaving FPGA
 	
-	output o_mismatch,
-	output o_t_su_dat_good
+	output reg o_mismatch,
+	output reg o_sda_good
 
 );
-	reg [WIDTH_F_REF-1:0] timer, nxt_timer;
+	// reg and wire declarations
 	reg [1:0] state, nxt_state;
-	wire timer_tc;
 	
-	reg prev_f_ref_t_r;
-	wire pulse_ref_t_r;
+	reg  prev_f_ref;
+	wire pulse_ref;
 	
 	reg prev_padout_sig;
 	reg prev_padin_sig;
 	wire change_padout_sig;
 	wire change_padin_sig;
-
 	
-	assign pulse_ref_t_r     = (~prev_f_ref_t_r   & i_f_ref);
+	reg [WIDTH_F_REF_T_SU_DAT-1:0]  timer_t_su , nxt_timer_t_su ; //timers
+	reg [WIDTH_F_REF_T_R     -1:0]  timer_t_r,   nxt_timer_t_r  ;
+		
+	wire timer_t_r_tc;       //terminal counts for timers
+	wire timer_t_su_tc;      //terminal counts for timers
+
+	reg  timer_t_su_rst ; // resets for timers
+
+	// assignments
+	
+	assign pulse_ref         = (~prev_f_ref      &  i_f_ref     );
 	assign change_padout_sig = ( prev_padout_sig != i_padout_sig);
 	assign change_padin_sig  = ( prev_padin_sig  != i_padin_sig );
+	assign timer_t_r_tc      = ( timer_t_r       == 0           );     
+	assign timer_t_su_tc     = ( timer_t_su      == 0           );     
+	
+	
 	
 	localparam ST_MATCH           = 0;
 	localparam ST_WAIT            = 1;
@@ -78,51 +94,71 @@ module i2c_passthru_sda_mismatch #(
 	always @(*) begin
 		//default else case
 		nxt_state = state;
-		o_mismatch= 0;
+		o_mismatch= 1'b0;
+		timer_t_su_rst = 1'b0; 
+		o_sda_good = 1'b0;
 		
 		case( state) 
 			ST_MATCH    :
 			begin
+				o_sda_good     = 1'b1;
+				timer_t_su_rst = 1'b1;
+				
 				if(       change_padout_sig)           nxt_state = ST_WAIT;
 				else if ( change_padin_sig )           nxt_state = ST_MISMATCH;
 			end
 			
 			ST_WAIT     :
 			begin
-				if(       timer_tc                   ) nxt_state = ST_MISMATCH;
-				else if ( i_padin_sig == i_padout_sig) nxt_state = ST_MATCH;
+				timer_t_su_rst = 1'b1;
+				if(       timer_t_r_tc               ) nxt_state = ST_MISMATCH;
+				else if ( i_padin_sig == i_padout_sig) nxt_state = ST_MATCH_WAIT_T_SU;
 			end
 			
 			ST_MISMATCH :
 			begin
-				o_mismatch = 1;
+				o_mismatch     = 1'b1;
+				timer_t_su_rst = 1'b1;
 				
-				if ( i_padin_sig == i_padout_sig)      nxt_state = ST_MATCH;
+				if ( i_padin_sig == i_padout_sig)      nxt_state = ST_MATCH_WAIT_T_SU;
 
+			end
+			
+			ST_MATCH_WAIT_T_SU:
+			begin
+				timer_t_su_rst = 1'b0;
+				
+				if(       timer_t_su_tc    )           nxt_state = ST_MATCH;
+				else if ( change_padout_sig)           nxt_state = ST_WAIT;
+				else if ( change_padin_sig )           nxt_state = ST_MISMATCH;
+			
 			end
 			
 			default: 
 			begin
+
 				nxt_state = ST_MATCH;
 			end
-			
-	
-		
+
 		endcase
-	
 	end
 	
 	//timer logic
 	always @(*) begin
-		if( i_padin_sig == i_padout_sig) nxt_timer = F_REF_T_R
-		else if( pulse_ref_t_r )         nxt_timer = timer - 1'b1;
+		if( i_padin_sig == i_padout_sig)     nxt_timer_t_r = F_REF_T_R;
+		else if( pulse_ref && ~timer_t_r_tc) nxt_timer_t_r = timer_t_r - 1'b1;
+		else                                 nxt_timer_t_r = timer_t_r;
+	end
+	
+	always @(*) begin
+		if( timer_t_su_rst )                  nxt_timer_t_su = F_REF_T_SU_DAT;
+		else if( pulse_ref && ~timer_t_su_tc) nxt_timer_t_su = timer_t_su - 1'b1;
+		else                                  nxt_timer_t_su = timer_t_su;
 	end
 	
 	
-	
-	
 	always @(posedge i_clk) begin
-		if(rstn) begin
+		if(i_rstn) begin
 			state <= nxt_state;
 		end
 		else begin
@@ -131,12 +167,12 @@ module i2c_passthru_sda_mismatch #(
 	end
 	
 	
-	
 	always @(posedge i_clk) begin
-		prev_f_ref_t_r  <= i_f_ref     ;
-		prev_padout_sig <= i_padout_sig;
-		prev_padin_sig  <= i_padin_sig ;
-		timer           <= nxt_timer   ;
+		prev_f_ref      <= i_f_ref         ;
+		prev_padout_sig <= i_padout_sig    ;
+		prev_padin_sig  <= i_padin_sig     ;
+		timer_t_r       <= nxt_timer_t_r   ;
+		timer_t_su      <= nxt_timer_t_su  ;
 	end
 	
 	

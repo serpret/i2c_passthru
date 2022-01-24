@@ -163,6 +163,7 @@ module i2c_passthru_bittx #(
 				o_sda = i_rx_sda_init;
 				
 				if( i_rx_sda_init_valid && timer_t_low_tc && sda_good ) 
+				//if( i_rx_sda_init_valid && timer_t_low_tc  ) 
 					                                nxt_state = ST_SCL0_B;
 			end
 			

@@ -121,6 +121,13 @@ module tb();
 		test_tx_to_slv1();
 		test_tx_to_slv2();
 		test_tx_to_slv3();
+		test_tx_to_slv4();
+		test_tx_to_slv5();
+		test_tx_to_slv6();
+		test_tx_to_slv7();
+		test_tx_to_slv8();
+
+		
 		
 	
 		if( failed) $display(" ! ! !  TEST FAILED ! ! !");
@@ -182,7 +189,7 @@ module tb();
 	task test_tx_to_mst1;
 		begin
 			//subtest_failed = 0;
-			$display("--- test_tx_to_mst1 ---");
+			$display("--- test_tx_to_mst1 %t ---", $realtime);
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 1;
@@ -310,7 +317,7 @@ module tb();
 	task test_tx_to_mst2;
 		begin
 			//subtest_failed = 0;
-			$display("--- test_tx_to_mst2 ---");
+			$display("--- test_tx_to_mst2 %t ---", $realtime);
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 1;
@@ -417,7 +424,7 @@ module tb();
 	task test_tx_to_mst3;
 		begin
 			//subtest_failed = 0;
-			$display("--- test_tx_to_mst3 ---");
+			$display("--- test_tx_to_mst3 %t ---", $realtime);
 			
 			
 			i_start_tx = 1;
@@ -519,7 +526,7 @@ module tb();
 	task test_tx_to_mst4;
 		begin
 			//subtest_failed = 0;
-			$display("--- test_tx_to_mst4 ---");
+			$display("--- test_tx_to_mst4 %t ---", $realtime);
 			
 			
 			i_start_tx = 1;
@@ -559,12 +566,12 @@ module tb();
 		end
 	endtask
 	
-	
+	//go through transmit to slave transaction with i_rx_done early
 	task test_tx_to_slv1;
 		begin
 		
 		//subtest_failed = 0;
-			$display("--- test_tx_to_slv1 ---");
+			$display("--- test_tx_to_slv1 %t ---", $realtime);
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 0;
@@ -697,12 +704,12 @@ module tb();
 	endtask
 	
 	
-	
+	//test mid change
 	task test_tx_to_slv2;
 		begin
 		
 		//subtest_failed = 0;
-			$display("--- test_tx_to_slv2 ---");
+			$display("--- test_tx_to_slv2 %t ---", $realtime);
 			
 			//i_start_tx = 1;
 			//i_tx_is_to_mst = 0;
@@ -793,12 +800,12 @@ module tb();
 		end
 	endtask
 	
-	
+	//test mid change and final change
 	task test_tx_to_slv3;
 		begin
 		
 		//subtest_failed = 0;
-			$display("--- test_tx_to_slv3 ---");
+			$display("--- test_tx_to_slv3 %t ---", $realtime);
 			
 			//i_start_tx = 1;
 			//i_tx_is_to_mst = 0;
@@ -887,6 +894,308 @@ module tb();
 			#1;
 		end
 	endtask
+	
+	
+	//test mid change and then track sda going up and down with final change and check t_low is not violated
+	task test_tx_to_slv4;
+		begin
+
+		//subtest_failed = 0;
+			$display("--- test_tx_to_slv4 %t ---", $realtime);
+			
+
+			//i_sda = 0;
+			
+			set_state_tx_to_slv_sdamid(0);
+			//i_rx_sda_final = 1;
+			//i_rx_done = 1;
+			
+			#1;
+			//check o_sda does not change before t_low
+			while( time_elapsed( time_start_chng_sda) < NS_T_LOW_MIN) begin
+				if (
+					o_scl       !== 1 ||
+					o_sda       !== 1 ||
+					o_tx_done   !== 0 ||
+					o_violation !== 0
+				) begin
+					$display("    fail 0 %t", $realtime);
+					failed = 1;
+				end
+				#100;
+			end
+			
+			i_rx_sda_final = 0;
+
+			
+			
+			//wait for o_sda to change
+			while( o_sda !== 0 && (time_elapsed( time_start_chng_sda) < NS_T_LOW_MAX) ) begin
+				#100;
+			end
+			i_sda = 0;
+			#1;
+			
+			if (
+				o_scl       !== 1 ||
+				o_sda       !== 0 ||
+				o_tx_done   !== 0 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 1 %t", $realtime);
+				failed = 1;
+			end
+			#100;
+			
+			//o_sda should follow i_rx_sda_final at this point
+			while(  (time_elapsed( time_start_rise_scl) < NS_TB_TIMEOUT) ) begin
+				
+				#1;
+				if (
+					o_scl       !== 1              ||
+					o_sda       !== i_rx_sda_final ||
+					o_tx_done   !== 0              ||
+					o_violation !== 0
+				) begin
+					$display("    fail 2 %t", $realtime);
+					failed = 1;
+				end
+				
+				repeat(10) @(posedge i_clk);
+				i_sda = i_rx_sda_final;
+				repeat(1) @(posedge i_clk);
+				i_rx_sda_final = ~i_rx_sda_final;
+				repeat(1) @(posedge i_clk);
+				
+			end
+			
+			//set sda_final 0 and set i_rx_done.  
+			//scl should not fall immediately (dont violate t_low)
+			i_rx_sda_final = 0;
+			
+			repeat(1)@(posedge i_clk);
+			i_rx_done = 1;
+
+
+			//check o_scl does not change before t_low
+			while( time_elapsed( time_start_chng_sda) < NS_T_LOW_MIN) begin
+				if (
+					o_scl       !== 1 ||
+					o_sda       !== 0 ||
+					o_tx_done   !== 0 ||
+					o_violation !== 0
+				) begin
+					$display("    fail 3 %t", $realtime);
+					failed = 1;
+				end
+				#100;
+				i_sda = 0;
+			end
+			
+					
+			//wait for o_sda to change
+			while( o_scl !== 0 && (time_elapsed( time_start_chng_sda) < NS_T_LOW_MAX) ) begin
+				#100;
+			end
+			i_scl = 0;
+			
+			
+			
+			#1;
+			if (
+				o_scl       !== 0 ||
+				o_sda       !== 0 ||
+				//o_tx_done   !== 0 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 4 %t", $realtime);
+				failed = 1;
+			end
+			repeat(1) @(posedge i_clk);
+			
+			#1;
+			if (
+				o_scl       !== 0 ||
+				o_sda       !== 0 ||
+				o_tx_done   !== 1 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 5 %t", $realtime);
+				failed = 1;
+			end
+			
+		end
+	endtask
+	
+	
+	
+	//test mid change and then track sda going up and down with final change and check scl drops
+	//	immediately if t_low is already satisfied
+	task test_tx_to_slv5;
+		begin
+
+		//subtest_failed = 0;
+			$display("--- test_tx_to_slv5 %t ---", $realtime);
+			
+
+			//i_sda = 0;
+			
+			set_state_tx_to_slv_sdamid(0);
+			i_rx_sda_final = 0;
+
+			//i_rx_done = 1;
+			
+
+
+			#1;
+			//wait for o_sda to change
+			while( o_sda !== 0 && (time_elapsed( time_start_chng_sda) < NS_T_LOW_MAX) ) begin
+				#100;
+			end
+			i_sda = 0;
+			#1;
+			
+			if (
+				o_scl       !== 1 ||
+				o_sda       !== 0 ||
+				o_tx_done   !== 0 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 1 %t", $realtime);
+				failed = 1;
+			end
+			#100;
+			
+			//o_sda should stay low at this point
+			while(  (time_elapsed( time_start_chng_sda) < NS_T_LOW_MAX) ) begin
+			
+				if (
+					o_scl       !== 1              ||
+					o_sda       !== i_rx_sda_final ||
+					o_tx_done   !== 0              ||
+					o_violation !== 0
+				) begin
+					$display("    fail 2 %t", $realtime);
+					failed = 1;
+				end
+				
+				#100;
+				
+			end
+			
+
+			repeat(1)@(posedge i_clk);
+			i_rx_done = 1;
+			repeat(1)@(posedge i_clk);
+
+
+			//check o_scl does not change before t_low
+			#1;
+			if (
+				o_scl       !== 0 ||
+				o_sda       !== 0 ||
+				//o_tx_done   !== 0 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 3 %t", $realtime);
+				failed = 1;
+			end
+			
+			repeat(1)@(posedge i_clk);
+			#1;
+			
+			if (
+				o_scl       !== 0 ||
+				o_sda       !== 0 ||
+				o_tx_done   !== 1 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 4 %t", $realtime);
+				failed = 1;
+			end
+			
+			
+	
+			
+		end
+	endtask
+	
+	
+	
+	//do transmit to slave but violate sda in init stage
+	task test_tx_to_slv6;
+		begin
+			$display("--- test_tx_to_slv6 %t ---", $realtime);
+			set_state_tx_to_slv_sdainit(1);
+			repeat(1) @(posedge i_clk);
+			i_sda = 0;
+			repeat(2) @(posedge i_clk);
+			
+			#1;
+			
+			if (
+				//o_scl       !== 0 ||
+				//o_sda       !== 0 ||
+				//o_tx_done   !== 1 ||
+				o_violation !== 1
+			) begin
+				$display("    fail 0 %t", $realtime);
+				failed = 1;
+			end
+
+		end
+	endtask
+	
+	//do transmit to slave but violate sda in mid stage
+	task test_tx_to_slv7;
+		begin
+			$display("--- test_tx_to_slv7 %t ---", $realtime);
+			//set_state_tx_to_slv_sdainit(1);
+			set_state_tx_to_slv_sdamid(0);
+			repeat(1) @(posedge i_clk);
+			i_sda = 0;
+			repeat(2) @(posedge i_clk);
+			
+			#1;
+			
+			if (
+				//o_scl       !== 0 ||
+				//o_sda       !== 0 ||
+				//o_tx_done   !== 1 ||
+				o_violation !== 1
+			) begin
+				$display("    fail 0 %t", $realtime);
+				failed = 1;
+			end
+
+		end
+	endtask
+	
+	//do transmit to slave but violate scl in init stage
+	task test_tx_to_slv8;
+		begin
+			$display("--- test_tx_to_slv8 %t ---", $realtime);
+			set_state_tx_to_slv_sdainit(0);
+			repeat(1) @(posedge i_clk);
+			i_scl = 0;
+			repeat(2) @(posedge i_clk);
+			
+			#1;
+			
+			if (
+				//o_scl       !== 0 ||
+				//o_sda       !== 0 ||
+				//o_tx_done   !== 1 ||
+				o_violation !== 1
+			) begin
+				$display("    fail 0 %t", $realtime);
+				failed = 1;
+			end
+		end
+	endtask
+	
+	
+	
 	
 	
 	task set_state_tx_to_slv_sdainit;

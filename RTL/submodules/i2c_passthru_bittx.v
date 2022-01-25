@@ -143,6 +143,9 @@ module i2c_passthru_bittx #(
 		
 		timer_t_low_rst = 0;
 		
+		o_scl = 1;
+		o_sda = 1;
+		
 		case( state) 
 		
 			ST_IDLE               :

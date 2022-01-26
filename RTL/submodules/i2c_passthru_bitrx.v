@@ -198,6 +198,7 @@ module i2c_passthru_bitrx #(
 			   
 			ST_SCL1_INIT_DONE   : 
 			begin
+				o_rx_done        = 1 ;
 				o_scl            = 0 ;
 				o_sda            = 1 ;
 				o_rx_sda_init_valid = 1;
@@ -222,16 +223,19 @@ module i2c_passthru_bitrx #(
 			   
 			ST_SCL1_MID_DONE    : 
 			begin
+				o_rx_done        = 1 ;
 				o_scl            = 0 ;
 				o_sda            = 1 ;
 				o_rx_sda_init_valid = 1;
 				o_rx_sda_mid_change = 1;
+				
 				
 				if( i_tx_done) nxt_state = ST_IDLE;
 			end
 			   
 			ST_SCL1_FIN_DONE         : 
 			begin
+				o_rx_done        = 1 ;
 				o_scl            = 0 ;
 				o_sda            = 1 ;
 				o_rx_sda_init_valid = 1;
@@ -264,10 +268,15 @@ module i2c_passthru_bitrx #(
 	//sequential logic that requires reset
 	always @(posedge i_clk) begin
 		if( i_rstn) begin
-			state <= nxt_state;
+			state          <= nxt_state;
+			o_rx_sda_init  <= nxt_rx_sda_init ;
+
 		end
 		else begin
-			state <= ST_IDLE;
+			//start state assume bus is idle and main ctrl switches master to this module
+			state          <= ST_SCL1_INIT;
+			o_rx_sda_init  <= 1'b1 ;
+
 		end
 	
 	end
@@ -278,7 +287,7 @@ module i2c_passthru_bitrx #(
 		rx_frm_slv        <= nxt_rx_frm_slv  ;
 		prev_f_ref        <= i_f_ref         ;
 		timer_t_low       <= nxt_timer_t_low ;
-		o_rx_sda_init     <= nxt_rx_sda_init ;
+		//o_rx_sda_init     <= nxt_rx_sda_init ;
 		o_rx_sda_final    <= nxt_rx_sda_final;
 		
 	end

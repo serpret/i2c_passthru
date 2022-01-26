@@ -291,10 +291,14 @@ module i2c_passthru_bittx #(
 	//sequential logic that requires reset
 	always @(posedge i_clk) begin
 		if( i_rstn) begin
-			state <= nxt_state;
+			state         <= nxt_state;
+			timer_t_low   <= nxt_timer_t_low;
 		end
 		else begin
-			state <= ST_IDLE;
+			//start state assume bus is idle and main ctrl switches slave to this module
+			state         <= ST_SCL1_A_INIT;
+			timer_t_low   <= 0;
+
 		end
 	
 	end
@@ -306,7 +310,7 @@ module i2c_passthru_bittx #(
 		prev_f_ref      <= i_f_ref;
 		prev_o_sda      <= o_sda;
 		prev_i_sda      <= i_sda;
-		timer_t_low     <= nxt_timer_t_low;
+		//timer_t_low     <= nxt_timer_t_low;
 		timer_t_low_sda <= nxt_timer_t_low_sda;
 		
 		

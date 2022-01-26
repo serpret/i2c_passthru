@@ -190,6 +190,7 @@ module tb();
 		begin
 			//subtest_failed = 0;
 			$display("--- test_tx_to_mst1 %t ---", $realtime);
+			set_state_idle_low();
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 1;
@@ -318,6 +319,7 @@ module tb();
 		begin
 			//subtest_failed = 0;
 			$display("--- test_tx_to_mst2 %t ---", $realtime);
+			set_state_idle_low();
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 1;
@@ -425,7 +427,7 @@ module tb();
 		begin
 			//subtest_failed = 0;
 			$display("--- test_tx_to_mst3 %t ---", $realtime);
-			
+			set_state_idle_low();
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 1;
@@ -527,7 +529,7 @@ module tb();
 		begin
 			//subtest_failed = 0;
 			$display("--- test_tx_to_mst4 %t ---", $realtime);
-			
+			set_state_idle_low();
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 1;
@@ -572,6 +574,8 @@ module tb();
 		
 		//subtest_failed = 0;
 			$display("--- test_tx_to_slv1 %t ---", $realtime);
+			
+			set_state_idle_low();
 			
 			i_start_tx = 1;
 			i_tx_is_to_mst = 0;
@@ -1201,7 +1205,8 @@ module tb();
 	task set_state_tx_to_slv_sdainit;
 		input sda_init;
 		begin
-			rst_uut();
+			//rst_uut();
+			set_state_idle_low();
 			i_start_tx = 1;
 			i_tx_is_to_mst = 0;
 			
@@ -1274,6 +1279,110 @@ module tb();
 			#1;
 			
 		
+		end
+	endtask
+	
+	
+	
+	
+	task set_state_idle_low;
+		begin
+
+		
+			i_start_tx = 0;
+			i_tx_is_to_mst = 0;
+			
+			i_rx_sda_init_valid = 1;
+			i_rx_sda_init  = 1;
+			i_rx_sda_mid_change = 0;
+			i_rx_sda_final = 0;
+			i_rx_done = 0;
+			i_scl = 1;
+			i_sda = 1;
+			
+			rst_uut();
+			repeat(1)@(posedge i_clk);
+			
+			#1;
+			if (
+				o_scl       !== 1             ||
+				o_sda       !== 1             ||
+				o_tx_done   !== 0             ||
+				o_violation !== 0
+			) begin
+				$display("    set_state_idle_low fail 0  %t", $realtime);
+				failed = 1;
+			end
+			
+			i_rx_sda_mid_change = 1;
+			repeat(1) @(posedge i_clk);
+			
+			#1;
+			if (
+				o_scl       !== 1             ||
+				o_sda       !== 0             ||
+				o_tx_done   !== 0             ||
+				o_violation !== 0
+			) begin
+				$display("    set_state_idle_low fail 1  %t", $realtime);
+				failed = 1;
+			end
+			i_sda = 0;
+			i_rx_done = 1;
+			#1;
+			
+			//o_sda should stay low at this point
+			while(  (time_elapsed( time_start_chng_sda) < NS_T_LOW_MIN) ) begin
+			
+				if (
+					o_scl       !== 1              ||
+					o_sda       !== 0              ||
+					o_tx_done   !== 0              ||
+					o_violation !== 0
+				) begin
+					$display("    set_state_idle_low fail 2 %t", $realtime);
+					failed = 1;
+				end
+				
+				#100;
+			end
+
+						
+			//wait for o_scl to fall by NS_T_LOW_MAX
+			while( o_scl !== 0 && (time_elapsed( time_start_chng_sda) < NS_T_LOW_MAX) ) begin
+				#100;
+			end
+
+			
+			if (
+				o_scl       !== 0              ||
+				o_sda       !== 0              ||
+				//o_tx_done   !== 0              ||
+				o_violation !== 0
+			) begin
+				$display("    set_state_idle_low fail 3 %t", $realtime);
+				failed = 1;
+			end
+			
+			i_scl = 0;
+			
+			repeat(1) @(posedge i_clk)
+			
+			#1;
+			
+			if (
+				o_scl       !== 0              ||
+				o_sda       !== 0              ||
+				o_tx_done   !== 1              ||
+				o_violation !== 0
+			) begin
+				$display("    set_state_idle_low fail 4 %t", $realtime);
+				failed = 1;
+			end
+			
+
+
+
 		end
 	endtask
 			

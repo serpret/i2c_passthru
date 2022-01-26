@@ -198,7 +198,7 @@ module tb();
 				#100;
 			end
 			
-			//check multiple times that values are good. o_rx_done should stay low until i_tx_done
+			//check multiple times that values are good. 
 			repeat( 4) begin
 				if (
 					o_rx_sda_init_valid !== 1 ||
@@ -208,7 +208,7 @@ module tb();
 		
 					o_scl       !== 0  ||
 					o_sda       !== 1  ||
-					o_rx_done   !== 0  ||
+					o_rx_done   !== 1  ||
 					o_violation !== 0  
 				) begin
 					$display("    fail 1 %t", $realtime);
@@ -277,7 +277,8 @@ module tb();
 		input sda_init;
 		begin
 			//$display("--- set_state_rx_frm_slv_sdainit %t ---", $realtime);
-			rst_uut();
+			//rst_uut();
+			set_state_idle_low();
 			i_start_rx   = 1;
 			i_rx_frm_slv = 1;
 			i_tx_done    = 1;
@@ -360,7 +361,8 @@ module tb();
 		input sda_init;
 		begin
 			//$display("--- set_state_rx_frm_mst_sdainit %t ---", $realtime);
-			rst_uut();
+			//rst_uut();
+			set_state_idle_low();
 			i_start_rx   = 1;
 			i_rx_frm_slv = 0;
 			i_tx_done    = 1;
@@ -431,6 +433,112 @@ module tb();
 			) begin
 				$display("    set_state_rx_frm_mst_sdainit fail 2 %t", $realtime);
 				failed = 1;
+			end
+			
+
+		end
+	endtask
+	
+	
+	
+	
+	task set_state_idle_low;
+		begin
+
+			i_start_rx   = 0;
+			i_rx_frm_slv = 0;
+			i_tx_done    = 0;
+			i_scl        = 1;
+			i_sda        = 1;
+			
+			
+			
+			rst_uut();
+			repeat(1)@(posedge i_clk)
+			
+			#1;
+			if (
+				o_rx_sda_init_valid !== 1        ||
+				o_rx_sda_init       !== 1        ||
+				//o_rx_sda_mid_change !== 0        ||
+				//o_rx_sda_final      !==  ||
+	
+				o_scl       !== 1  ||
+				o_sda       !== 1  ||
+				o_rx_done   !== 0  ||
+				o_violation !== 0  
+			) begin
+				$display("    set_state_idle_low fail 0 %t", $realtime);
+				failed = 1;
+			end
+			
+			i_scl = 1;
+			i_sda = 0;
+			repeat(1)@(posedge i_clk);
+			
+			#1;
+			
+			if (
+				o_rx_sda_init_valid !== 1        ||
+				o_rx_sda_init       !== 1        ||
+				o_rx_sda_mid_change !== 1        ||
+				//o_rx_sda_final      !==  ||
+	
+				o_scl       !== 1  ||
+				o_sda       !== 1  ||
+				o_rx_done   !== 0  ||
+				o_violation !== 0  
+			) begin
+				$display("    set_state_idle_low fail 1 %t", $realtime);
+				failed = 1;
+			end
+			
+			i_scl = 0;
+			i_sda = 0;
+			
+			repeat(1)@(posedge i_clk);
+			
+			#1;
+			if (
+				o_rx_sda_init_valid !== 1        ||
+				o_rx_sda_init       !== 1        ||
+				o_rx_sda_mid_change !== 1        ||
+				//o_rx_sda_final      !==  ||
+	
+				o_scl       !== 0  ||
+				o_sda       !== 1  ||
+				o_rx_done   !== 1  ||
+				o_violation !== 0  
+			) begin
+				$display("    set_state_idle_low fail 2 %t", $realtime);
+				failed = 1;
+			end
+			
+			i_tx_done    = 1;
+			i_scl        = 0;
+			i_sda        = 1;
+			repeat(1) @(posedge i_clk);
+			
+			repeat(2) begin
+						#1;
+				if (
+					o_rx_sda_init_valid !== 0        ||
+					//o_rx_sda_init       !== 1        ||
+					o_rx_sda_mid_change !== 0        ||
+					//o_rx_sda_final      !==  ||
+		
+					o_scl       !== 0  ||
+					o_sda       !== 1  ||
+					o_rx_done   !== 1  ||
+					o_violation !== 0  
+				) begin
+					$display("    set_state_idle_low fail 3 %t", $realtime);
+					failed = 1;
+				end
+				
+				i_tx_done    = 0;
+
+			
 			end
 			
 

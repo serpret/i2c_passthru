@@ -111,6 +111,8 @@ module tb();
 
 		test_rx_frm_slv1();
 		test_rx_frm_slv2();
+		test_rx_frm_mst1();
+		test_rx_frm_mst2();
 
 
 	
@@ -273,31 +275,218 @@ module tb();
 	
 	
 	
+	//mst rx.  simple bit no mid changes
+	task test_rx_frm_mst1;
+		begin
+			$display("--- test_rx_frm_mst1 %t ---", $realtime);
+			set_state_rx_frm_mst_sdainit( 1);
+			
+			
+			#1;
+			//make sure values stay stable entire time scl is high
+			while( time_elapsed( time_start_rise_scl) < NS_T_LOW_MAX) begin
+	
+				if (
+					o_rx_sda_init_valid !== 1 ||
+					o_rx_sda_init       !== 1 ||
+					o_rx_sda_mid_change !== 0 ||
+					//o_rx_sda_final      !==  ||
+	
+					o_scl       !== 1  ||
+					o_sda       !== 1  ||
+					o_rx_done   !== 0  ||
+					o_violation !== 0  
+	
+				) begin
+					$display("    fail 0 %t", $realtime);
+					failed = 1;
+				end
+				#100;
+			end
+			
+			i_scl = 0;
+			repeat(1) @(posedge i_clk);
+			
+			////wait for o_scl to fall
+			//while( o_scl !== 0 && (time_elapsed( time_start_rise_scl) < NS_T_LOW_MAX) ) begin
+			//	#100;
+			//end
+			
+			#1;
+			//check multiple times that values are good. 
+			repeat( 4) begin
+				if (
+					o_rx_sda_init_valid !== 1 ||
+					o_rx_sda_init       !== 1 ||
+					o_rx_sda_mid_change !== 0 ||
+					//o_rx_sda_final      !==  ||
+		
+					o_scl       !== 0  ||
+					o_sda       !== 1  ||
+					o_rx_done   !== 1  ||
+					o_violation !== 0  
+				) begin
+					$display("    fail 1 %t", $realtime);
+					failed = 1;
+				end
+				i_scl = 0;
+				
+				repeat(1) @(posedge i_clk);
+			end
+			
+			//set i_tx_done to finish
+			i_tx_done = 1;
+			repeat(1) @(posedge i_clk)
+			
+			#1;
+			if (
+				o_rx_sda_init_valid !== 0 ||
+				//o_rx_sda_init       !== 0 ||
+				o_rx_sda_mid_change !== 0 ||
+				//o_rx_sda_final      !==  ||
+			
+				o_scl       !== 0  ||
+				o_sda       !== 1  ||
+				o_rx_done   !== 1  ||
+				o_violation !== 0  
+			) begin
+				$display("    fail 2 %t", $realtime);
+				failed = 1;
+			end
+	
+	
+		end
+	endtask
+	
+	
+	//mst rx.  mid change
+	task test_rx_frm_mst2;
+		begin
+			$display("--- test_rx_frm_mst2 %t ---", $realtime);
+			set_state_sdamidchng(0);
+			repeat(4) begin
+				#1;
+				if (
+					o_rx_sda_init_valid !== 1 ||
+					o_rx_sda_init       !== 0 ||
+					o_rx_sda_mid_change !== 1 ||
+					o_rx_sda_final      !== i_sda ||
+				
+					o_scl       !== 1  ||
+					o_sda       !== 1  ||
+					o_rx_done   !== 0  ||
+					o_violation !== 0  
+				) begin
+					$display("    fail 0 %t", $realtime);
+					failed = 1;
+				end
+				i_sda = ~i_sda;
+				repeat(1) @(posedge i_clk);
+
+			end
+			i_sda = 1;
+			repeat(1) @(posedge i_clk);
+			i_scl = 0;
+			repeat(1) @(posedge i_clk);
+			
+			#1;
+			if (
+				o_rx_sda_init_valid !== 1 ||
+				o_rx_sda_init       !== 0 ||
+				o_rx_sda_mid_change !== 1 ||
+				o_rx_sda_final      !== 1 ||
+			
+				o_scl       !== 0  ||
+				o_sda       !== 1  ||
+				o_rx_done   !== 1  ||
+				o_violation !== 0  
+			) begin
+				$display("    fail 1 %t", $realtime);
+				failed = 1;
+			end
+			
+			i_tx_done = 1;
+			repeat(1) @(posedge i_clk);
+			
+			//once done make sure values dont change
+			repeat(4) begin
+				#1;
+				if (
+					o_rx_sda_init_valid !== 0 ||
+					o_rx_sda_init       !== 0 ||
+					o_rx_sda_mid_change !== 0 ||
+					o_rx_sda_final      !== 1 ||
+				
+					o_scl       !== 0  ||
+					o_sda       !== 1  ||
+					o_rx_done   !== 1  ||
+					o_violation !== 0  
+				) begin
+					$display("    fail 1 %t", $realtime);
+					failed = 1;
+				end
+				repeat(1)@(posedge i_clk);
+				
+			
+			end
+			
+
+
+		end
+	endtask
+			
+			
+			
+			
+	
 	task set_state_rx_frm_slv_sdainit;
 		input sda_init;
+		begin
+			set_state_sdainit( sda_init, 1);
+		end
+	endtask
+	
+	task set_state_rx_frm_mst_sdainit;
+		input sda_init;
+		begin
+			set_state_sdainit( sda_init, 0);
+		end
+	endtask
+	
+	
+	
+	task set_state_sdainit;
+		input sda_init;
+		input rx_frm_slv;
 		begin
 			//$display("--- set_state_rx_frm_slv_sdainit %t ---", $realtime);
 			//rst_uut();
 			set_state_idle_low();
 			i_start_rx   = 1;
-			i_rx_frm_slv = 1;
+			i_rx_frm_slv = rx_frm_slv;
 			i_tx_done    = 1;
 			i_scl        = 0;
-			i_sda        = sda_init;
+			//i_sda        = sda_init;
+
 			repeat(1) @(posedge i_clk);
 			i_start_rx   = 0;
 			i_rx_frm_slv = 0;
 			
 			i_tx_done    = 0;
 			
-			//check values before T_LOW minimum
+			//check values before T_LOW minimum. o_rx_sda_init should follow i_sda
+			i_sda        = 0;
+
 			#1;
 			while( time_elapsed( time_start_fall_scl) < NS_T_LOW_MIN) begin
 
+				repeat(1) @(posedge i_clk);
+				
+				#1;
 				if (
-					o_rx_sda_init_valid !== 0 ||
-					//o_rx_sda_init       !==  ||
-					o_rx_sda_mid_change !== 0 ||
+					o_rx_sda_init_valid !== 0     ||
+					o_rx_sda_init       !== i_sda ||
+					o_rx_sda_mid_change !== 0     ||
 					//o_rx_sda_final      !==  ||
 	
 					o_scl       !== 0  ||
@@ -306,11 +495,14 @@ module tb();
 					o_violation !== 0  
 	
 				) begin
-					$display("    set_state_rx_frm_slv_sdainit fail 0 %t", $realtime);
+					$display("    set_state_sdainit fail 0 %t", $realtime);
 					failed = 1;
 				end
-				#100;
+				i_sda = ~i_sda;
+				
 			end
+			
+			i_sda = sda_init;
 			
 			
 			//wait for o_scl to rise by NS_T_LOW_MAX
@@ -329,7 +521,7 @@ module tb();
 				o_rx_done   !== 0  ||
 				o_violation !== 0  
 			) begin
-				$display("    set_state_rx_frm_slv_sdainit fail 1 %t", $realtime);
+				$display("    set_state_sdainit fail 1 %t", $realtime);
 				failed = 1;
 			end
 			
@@ -347,7 +539,7 @@ module tb();
 				o_rx_done   !== 0  ||
 				o_violation !== 0  
 			) begin
-				$display("    set_state_rx_frm_slv_sdainit fail 2 %t", $realtime);
+				$display("    set_state_sdainit fail 2 %t", $realtime);
 				failed = 1;
 			end
 			
@@ -357,87 +549,39 @@ module tb();
 	
 	
 	
-	task set_state_rx_frm_mst_sdainit;
+	
+	task set_state_sdamidchng; //master only
 		input sda_init;
 		begin
-			//$display("--- set_state_rx_frm_mst_sdainit %t ---", $realtime);
-			//rst_uut();
-			set_state_idle_low();
-			i_start_rx   = 1;
-			i_rx_frm_slv = 0;
-			i_tx_done    = 1;
-			i_scl        = 0;
-			i_sda        = sda_init;
+			set_state_sdainit( sda_init, 0);
+			i_sda = ~sda_init;
 			repeat(1) @(posedge i_clk);
-			i_start_rx   = 0;
-			i_rx_frm_slv = 0;
 			
-			i_tx_done    = 0;
-			
-			//check values before T_LOW minimum
 			#1;
-			while( time_elapsed( time_start_fall_scl) < NS_T_LOW_MIN) begin
-
-				if (
-					o_rx_sda_init_valid !== 0 ||
-					//o_rx_sda_init       !==  ||
-					o_rx_sda_mid_change !== 0 ||
-					//o_rx_sda_final      !==  ||
-	
-					o_scl       !== 0  ||
-					o_sda       !== 1  ||
-					o_rx_done   !== 0  ||
-					o_violation !== 0  
-	
-				) begin
-					$display("    set_state_rx_frm_mst_sdainit fail 0 %t", $realtime);
-					failed = 1;
-				end
-				#100;
-			end
 			
-			
-			//wait for o_scl to rise by NS_T_LOW_MAX
-			while( o_scl !== 1 && (time_elapsed( time_start_fall_scl) < NS_T_LOW_MAX) ) begin
-				#100;
-			end
-			
-			if (
-				o_rx_sda_init_valid !== 0 ||
-				//o_rx_sda_init       !== 0 ||
-				o_rx_sda_mid_change !== 0 ||
-				//o_rx_sda_final      !==  ||
-	
-				o_scl       !== 1  ||
-				o_sda       !== 1  ||
-				o_rx_done   !== 0  ||
-				o_violation !== 0  
-			) begin
-				$display("    set_state_rx_frm_mst_sdainit fail 1 %t", $realtime);
-				failed = 1;
-			end
-			
-			i_scl = 1;
-			repeat(1) @(posedge i_clk)
-			#1;
 			if (
 				o_rx_sda_init_valid !== 1        ||
 				o_rx_sda_init       !== sda_init ||
-				o_rx_sda_mid_change !== 0        ||
-				//o_rx_sda_final      !==  ||
+				o_rx_sda_mid_change !== 1'b1     ||
+				o_rx_sda_final      !== ~sda_init||
 	
 				o_scl       !== 1  ||
 				o_sda       !== 1  ||
 				o_rx_done   !== 0  ||
 				o_violation !== 0  
+	
 			) begin
-				$display("    set_state_rx_frm_mst_sdainit fail 2 %t", $realtime);
+				$display("    set_state_sdamidchng fail 0 %t", $realtime);
 				failed = 1;
 			end
 			
-
+			
+		
 		end
 	endtask
+	
+	
+	
 	
 	
 	

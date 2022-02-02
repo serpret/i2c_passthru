@@ -21,7 +21,7 @@
 //USE OR OTHER DEALINGS IN THE SOFTWARE.
 //////////////////////////////////////////////////////////////////////////////
 
-module i2c_passthru_idle_stuck_det(
+module i2c_passthru_idle_stuck_det #(
 
 	//number of periods of i_f_ref required for smbus timing
 	//example: for t_r=1us ( rise time) and i_f_ref is 8mhz
@@ -129,7 +129,7 @@ module i2c_passthru_idle_stuck_det(
 			nxt_stuck = 1'b1;
 		end
 		else begin
-			nxt_stuck = stuck;
+			nxt_stuck = o_stuck;
 		end
 	end
 	
@@ -150,7 +150,7 @@ module i2c_passthru_idle_stuck_det(
 			ST_IDLE        :
 			begin
 				o_idle = 1;
-				if( ~i_sda) nxt_state = ST_ACTIVE;
+				if( ~i_sda || ~i_scl) nxt_state = ST_ACTIVE;
 			end
 			
 			ST_ACTIVE      :
@@ -158,8 +158,9 @@ module i2c_passthru_idle_stuck_det(
 			 	timer_tlow_rst = 1;
 
 				if( F_REF_SLOW_T_HI_MAX == timer_change && (prev_scl && prev_sda)) 
-					nxt_state = ST_IDLE:
-				else if (posedge_sda)
+					nxt_state = ST_IDLE;
+				else if (posedge_sda )
+				//else if (posedge_sda && i_scl)
 					nxt_state = ST_ACTIVE_STOP;
 			end
 			

@@ -9,6 +9,7 @@ module tb();
 	localparam NS_T_BUS_STUCK_MIN =    25_000_000;
 	
 	localparam NS_T_HI_MAX      =  700000;
+	localparam NS_T_HI_MIN      =   50000;
 	localparam NS_T_LOW_MIN     = 4000;
 	localparam NS_T_LOW_MAX     = 6000;
 
@@ -41,6 +42,7 @@ module tb();
 	reg i_sda        ;
 
 	//uut outputs
+	wire o_idle_timeout;
 	wire o_idle  ;
 	wire o_stuck ;
 	
@@ -71,6 +73,7 @@ module tb();
 		.i_f_ref_slow   (i_f_ref_slow  )  ,
 		.i_sda          (i_sda         )  ,
 		.i_scl          (i_scl         )  ,
+		.o_idle_timeout (o_idle_timeout)  ,
 		.o_idle         (o_idle        )  ,
 		.o_stuck        (o_stuck       )
 	);
@@ -155,21 +158,52 @@ module tb();
 		realtime start_time;
 		begin
 			$display("--- test_idle_high %t ---", $realtime);
-			start_time = $realtime;
-			
+			i_scl = 1'b0;
+			@(posedge i_clk);
 			i_sda = 1'b1;
 			i_scl = 1'b1;
 			
+			//idle shouldn't rise immediately
+				start_time = $realtime;
+
+			while( time_elapsed( start_time) < NS_T_HI_MIN) begin
+			
+				#1;
+				if(
+					o_idle_timeout !== 1'b0 ||
+					o_idle         !== 1'b0 ||
+					o_stuck        !== 1'b0
+				) begin
+					$display("    fail 0 %t", $realtime);
+					failed = 1;
+				end
+				@(posedge i_clk);
+			end
+			
+			
+			//wait for o_idle_timeout pulse
+			while( !o_idle_timeout && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
+				@(posedge i_clk) #1;
+			end
+			
+			if( !o_idle_timeout  ) begin
+				$display("    fail 1 %t", $realtime);
+				failed = 1;
+			end
+			@(posedge i_clk);
+			
+			#1;
 			//wait for o_idle to rise
 			while( (!o_idle || o_stuck) && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
 				@(posedge i_clk) #1;
 			end
 			
 			if(
-				o_idle  !== 1'b1 ||
-				o_stuck !== 1'b0
+				o_idle_timeout !== 1'b0 ||
+				o_idle         !== 1'b1 ||
+				o_stuck        !== 1'b0
 			) begin
-				$display("    fail 0 %t", $realtime);
+				$display("    fail 2 %t", $realtime);
 				failed = 1;
 			end
 			
@@ -183,7 +217,7 @@ module tb();
 					o_idle  !== 1'b1 ||
 					o_stuck !== 1'b0
 				) begin
-					$display("    fail 1 %t", $realtime);
+					$display("    fail 3 %t", $realtime);
 					failed = 1;
 				end
 				@(posedge i_clk);
@@ -217,8 +251,9 @@ module tb();
 			while( time_elapsed( start_time) < NS_T_LOW_MAX) begin
 				#1
 				if(
-					o_idle  !== 1'b0 ||
-					o_stuck !== 1'b0
+					o_idle_timeout !== 1'b0 ||
+					o_idle         !== 1'b0 ||
+					o_stuck        !== 1'b0
 				) begin
 					$display("    fail 1 %t", $realtime);
 					failed = 1;
@@ -236,13 +271,14 @@ module tb();
 			
 			start_time = $realtime;
 			//wait for o_idle to go high
-			while( (!o_idle || o_stuck) && (time_elapsed( start_time) < NS_T_LOW_MAX) ) begin
+			while( (!o_idle || o_stuck) && ~o_idle_timeout && (time_elapsed( start_time) < NS_T_LOW_MAX) ) begin
 				@(posedge i_clk) #1;
 			end
 			
 			if(
-				o_idle  !== 1'b1 ||
-				o_stuck !== 1'b0
+				o_idle_timeout !== 1'b0 ||
+				o_idle         !== 1'b1 ||
+				o_stuck        !== 1'b0
 			) begin
 				$display("    fail 2 %t", $realtime);
 				failed = 1;

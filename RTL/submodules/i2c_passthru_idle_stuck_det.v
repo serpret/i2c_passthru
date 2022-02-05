@@ -66,6 +66,9 @@ module i2c_passthru_idle_stuck_det #(
 	input i_sda,
 	input i_scl,
 	
+	//o_idle_timeout: single clock pulse to signify the bus became idle because 
+	// of timeout as oppose to stop detection.
+	output reg o_idle_timeout, 
 	output reg o_idle,
 	output reg o_stuck
 	
@@ -137,6 +140,7 @@ module i2c_passthru_idle_stuck_det #(
 	localparam ST_IDLE        = 0;
 	localparam ST_ACTIVE      = 1;
 	localparam ST_ACTIVE_STOP = 2;
+	localparam ST_IDLE_TIMEOUT= 3;
 
 	always @(*) begin
 		//default else case
@@ -144,6 +148,7 @@ module i2c_passthru_idle_stuck_det #(
 		
 		timer_tlow_rst = 0;
 		o_idle         = 0;
+		o_idle_timeout = 0;
 		
 		case( state) 
 		
@@ -158,7 +163,7 @@ module i2c_passthru_idle_stuck_det #(
 			 	timer_tlow_rst = 1;
 
 				if( F_REF_SLOW_T_HI_MAX == timer_change && (prev_scl && prev_sda)) 
-					nxt_state = ST_IDLE;
+					nxt_state = ST_IDLE_TIMEOUT;
 				else if (posedge_sda )
 				//else if (posedge_sda && i_scl)
 					nxt_state = ST_ACTIVE_STOP;
@@ -169,6 +174,14 @@ module i2c_passthru_idle_stuck_det #(
 				if( ~prev_sda || ~prev_scl)  nxt_state = ST_ACTIVE;
 				else if( timer_tlow_tc)      nxt_state = ST_IDLE;
 			end
+			
+			ST_IDLE_TIMEOUT: 
+			begin
+				o_idle = 1;
+				o_idle_timeout = 1;
+				nxt_state = ST_IDLE;
+			end
+
 			
 			default:
 			begin

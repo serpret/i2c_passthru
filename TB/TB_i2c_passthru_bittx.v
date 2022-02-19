@@ -395,26 +395,26 @@ module tb();
 				failed = 1;
 			end
 			
-			//test violation by making sda change in middle while scl is high
-			i_scl = 1;
-			repeat(1) @(posedge i_clk);
-			i_sda = 1;
-			repeat(2) @(posedge i_clk);
-			#1;
-			if (
-				//o_scl       !== 1             ||
-				//o_sda       !== i_rx_sda_init ||
-				//o_tx_done   !== 0             ||
-				o_violation !== 1
-			) begin
-				$display("    fail 3 %t", $realtime);
-				failed = 1;
-			end
-			
-			i_rstn = 0;
-			repeat(1) @(posedge i_clk);
-			i_rstn = 1;
-			repeat(1) @(posedge i_clk);
+			////test violation by making sda change in middle while scl is high
+			//i_scl = 1;
+			//repeat(1) @(posedge i_clk);
+			//i_sda = 1;
+			//repeat(2) @(posedge i_clk);
+			//#1;
+			//if (
+			//	//o_scl       !== 1             ||
+			//	//o_sda       !== i_rx_sda_init ||
+			//	//o_tx_done   !== 0             ||
+			//	o_violation !== 1
+			//) begin
+			//	$display("    fail 3 %t", $realtime);
+			//	failed = 1;
+			//end
+			//
+			//i_rstn = 0;
+			//repeat(1) @(posedge i_clk);
+			//i_rstn = 1;
+			//repeat(1) @(posedge i_clk);
 
 		end
 	endtask

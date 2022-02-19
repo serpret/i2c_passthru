@@ -187,8 +187,9 @@ module i2c_passthru_bittx #(
 				o_scl = 1;
 				o_sda = i_rx_sda_init;
 				
-				if( sda_mismatch)                   nxt_state = ST_VIOLATION;
-				else if ( ~i_scl)                   nxt_state = ST_IDLE;
+				//if( sda_mismatch)                   nxt_state = ST_VIOLATION;
+				//else if ( ~i_scl)                   nxt_state = ST_IDLE;
+				if( ~i_scl)                         nxt_state = ST_IDLE;
 			end
 			
 			ST_SCL1_A_INIT        :

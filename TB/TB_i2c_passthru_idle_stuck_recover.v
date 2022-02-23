@@ -4,7 +4,7 @@
 module tb();
 	//parameters
 	
-	localparam NS_TB_TIMEOUT      = 1_000_000_000;
+	localparam NS_TB_TIMEOUT      =   300_000_000;
 	localparam NS_T_BUS_STUCK_MAX =   200_000_000;
 	localparam NS_T_BUS_STUCK_MIN =    25_000_000;
 	
@@ -17,9 +17,19 @@ module tb();
 	
 	//f_ref 4mhz
 	//f_ref_slow 
-	localparam F_REF_T_LOW                  = 20 ; // 5 us
-	localparam F_REF_T_HI                   = 300 ; // ~75us
+	
+	//i_clk 80ns period
+	//localparam F_REF_T_LOW                  = 20 ; // 5 us
+	//localparam F_REF_T_HI                   = 300 ; // ~75us
+	//localparam F_REF_SLOW_T_STUCK_MAX       = 127; // ~32ms
+	
+	
+	//i_clk 320ns period
+	localparam F_REF_T_LOW                  =  5 ; // 5 us
+	localparam F_REF_T_HI                   = 60 ; // ~75us
 	localparam F_REF_SLOW_T_STUCK_MAX       = 127; // ~32ms
+	
+	
 	localparam WIDTH_F_REF_T_LOW            = 5  ;
 	localparam WIDTH_F_REF_T_HI             = 9  ;
 	localparam WIDTH_F_REF_SLOW_T_STUCK_MAX = 7  ;
@@ -56,8 +66,13 @@ module tb();
 	wire o_stuck ;
 	
 	
-	always #40         i_clk         = ~i_clk;
-	always #125        f_ref_unsync  = ~f_ref_unsync;      //125 -> 4mhz. 250ns
+	//always #40         i_clk         = ~i_clk;
+	//always #125        f_ref_unsync  = ~f_ref_unsync;      //125 -> 4mhz. 250ns
+	//always #125000 f_ref_slow_unsync = ~f_ref_slow_unsync; //125000 -> 4 khz. 250us
+
+
+	always #160        i_clk         = ~i_clk;
+	always #500        f_ref_unsync  = ~f_ref_unsync;    
 	always #125000 f_ref_slow_unsync = ~f_ref_slow_unsync; //125000 -> 4 khz. 250us
 	
 	always @(posedge i_clk) begin
@@ -104,7 +119,7 @@ module tb();
 	
 	mon_count_posedge u_mon_count_posedge (
 		.i_rst   ( reset_scl_count),
-		.i_signal( i_scl          ),
+		.i_signal( o_scl          ),
 		.o_cnt   ( scl_count      )
 	
 	);
@@ -121,6 +136,7 @@ module tb();
 		test_stop();
 		test_stuck_scllow(); //still need to finish this test.  stuck high is good, but at end need to check o_scl and o_sda function
 		test_stuck_sdalow();
+		test_stuck_sdalow_release_after_16();
 
 
 	
@@ -429,6 +445,7 @@ module tb();
 			#20_000;
 			start_time = $realtime;
 			while( time_elapsed( start_time) < 20_000) begin
+			//while( time_elapsed( start_time) < NS_T_BUS_STUCK_MIN ) begin
 				#1
 				if(
 					//o_idle  !== 1'b1 ||
@@ -522,16 +539,162 @@ module tb();
 				o_scl   !== 1'b1 ||
 				o_sda   !== 1'b1 ||
 				o_stuck !== 1'b1 ||
-				scl_count > 32'h0000_0010
+				scl_count > 32'h0000_0010 ||
+				scl_count < 32'h0000_000C
 				
 			) begin
 				$display("    fail 2 %t", $realtime);
 				failed = 1;
 			end
+			i_scl = 1'b1;
+			//there should now be long period with no o_scl or o_sda output
+
+			start_time = $realtime;
+			while( time_elapsed( start_time) < NS_T_BUS_STUCK_MIN) begin
+			
+				#1
+				if(
+					//o_idle  !== 1'b1 ||
+					o_scl   !== 1'b1 ||
+					o_sda   !== 1'b1 ||
+					o_stuck !== 1'b1
+				) begin
+					$display("    fail 3 %t", $realtime);
+					failed = 1;
+				end
+
+				@(posedge i_clk);
+			end
+			
+			//wait for stop events to start again
+			start_time = $realtime;
+			while( (o_sda !== 1'b0) && (time_elapsed( start_time) < NS_TB_TIMEOUT) ) begin
+				@(posedge i_clk) ;
+			end
+			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
+					$display("    fail 4 %t", $realtime);
+					failed = 1;
+			end
+			
+			reset_scl_count = 1;
+			#1;
+			reset_scl_count = 0;
+			//wait at least 2 scl counts and release the bus, module should then go back to idle
+			start_time = $realtime;
+			while( (scl_count <3) && (time_elapsed( start_time) < NS_TB_TIMEOUT) ) begin
+				@(posedge i_clk) ;
+			end
+			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
+					$display("    fail 5 %t", $realtime);
+					failed = 1;
+			end
+			
+			i_scl = 1'b1;
+			i_sda = 1'b1;
+			
+
+			start_time = $realtime;
+			while( (o_idle !== 1'b1) && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
+				@(posedge i_clk) ;
+			end
+			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
+					$display("    fail 6 %t", $realtime);
+					failed = 1;
+			end
+			
+			
 			
 			
 		end
 	endtask
+	
+	
+	
+	task test_stuck_sdalow_release_after_16;
+		realtime start_time;
+		begin
+			$display("--- test_stuck_sdalow_release_after_16 %t ---", $realtime);
+			rst_uut();
+			i_sda = 1'b0;
+			i_scl = 1'b1;
+			@(posedge i_clk);
+			
+			
+			//wait for stuck to go high
+			start_time = $realtime;
+			while( !o_stuck && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX) ) begin
+				#1;
+				if(
+					//o_idle  !== 1'b0 //||
+					//o_stuck !== 1'b0
+					o_scl   !== 1'b1 ||
+					o_sda   !== 1'b1
+				) begin
+					$display("    fail 0 %t", $realtime);
+					failed = 1;
+				end
+				@(posedge i_clk) ;
+			end
+			
+			//make sure stuck is hi
+			#1
+			if(
+				//o_idle  !== 1'b0 ||
+				o_stuck !== 1'b1
+			) begin
+				$display("    fail 1 %t", $realtime);
+				failed = 1;
+			end
+			@(posedge i_clk);
+			
+
+			reset_scl_count = 1;
+			#1;
+			reset_scl_count = 0;
+			//wait 500us, there should only be 16 clocks counted
+			start_time = $realtime;
+			while( time_elapsed( start_time) < 500_000) begin
+				i_scl = o_scl;
+				@(posedge i_clk);
+			end
+			
+			#1
+			if(
+				o_idle  !== 1'b0 ||
+				o_scl   !== 1'b1 ||
+				o_sda   !== 1'b1 ||
+				o_stuck !== 1'b1 ||
+				scl_count > 32'h0000_0010 ||
+				scl_count < 32'h0000_000C
+				
+			) begin
+				$display("    fail 2 %t", $realtime);
+				failed = 1;
+			end
+			i_scl = 1'b1;
+			
+			//there should now be long period with no o_scl or o_sda output
+			//wait a little bit and release scl and sda
+			#20_000;
+			i_scl = 1'b1;
+			i_sda = 1'b1;
+
+			
+
+			start_time = $realtime;
+			while( (o_idle !== 1'b1) && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
+				@(posedge i_clk) ;
+			end
+			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
+					$display("    fail 6 %t", $realtime);
+					failed = 1;
+			end
+			
+
+			
+		end
+	endtask
+	
 	
 	
 	

@@ -314,6 +314,8 @@ module i2c_passthru_idle_stuck_recover #(
 				timer_tlow_rst = 1;
 				o_scl = 1;
 				o_sda = 0;
+				recov_bit_cnt_inc = 1;
+
 				
 				                            nxt_state = ST_STUCK_5;
 
@@ -324,7 +326,7 @@ module i2c_passthru_idle_stuck_recover #(
 				o_stuck = 1;
 				o_scl = 1;
 				o_sda = 0;
-				recov_bit_cnt_inc = 1;
+				//recov_bit_cnt_inc = 1;
 				
 				if( timer_tlow_tc)          nxt_state = ST_STUCK_0;
 

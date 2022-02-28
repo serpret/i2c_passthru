@@ -180,10 +180,34 @@ module i2c_passthru #(
 	wire chb_idle  ;
 	wire chb_stuck ;
 	
+	
+	//flip flop buffers for generating 1 clock pulsed signals
+	reg prev_bittx_violation ;
+	reg prev_bitrx_violation ;
+	reg prev_cha_stuck       ;
+	reg prev_chb_stuck       ;
+	
+	wire bittx_violation_pulse ;
+	wire bitrx_violation_pulse ;
+	
+	
+	
 
 	// ********* ASSIGNS ****************************************************
-	assign o_idle_timeout = cha_idle_timeout || chb_idle_timeout;
+	assign o_idle_timeout  = cha_idle_timeout      || chb_idle_timeout;
+	assign o_bit_violation = bittx_violation_pulse || bitrx_violation_pulse;
 	
+	assign o_cha_stuck = ~prev_cha_stuck & cha_stuck;
+	assign o_chb_stuck = ~prev_chb_stuck & chb_stuck;
+	
+	assign o_cha_ismst = cha_ismst;
+	assign o_chb_ismst = chb_ismst;
+	
+	
+	assign bittx_violation_pulse = ~prev_bittx_violation & bittx_violation ;
+	assign bitrx_violation_pulse = ~prev_bitrx_violation & bitrx_violation ;
+
+
 	
 	// ********* REGISTER OUTPUTS *******************************************
 	//flip flop register scl sda outputs or not
@@ -487,6 +511,16 @@ module i2c_passthru #(
 		
 	);
 	
+	
+
+	// ********* GENERATE 1 CLOCK PULSES ************************************
+	always @(posedge i_clk) begin
+		prev_bittx_violation <= bittx_violation;
+		prev_bitrx_violation <= bitrx_violation;
+		prev_cha_stuck       <= cha_stuck;
+		prev_chb_stuck       <= chb_stuck;
+
+	end
 	
 	
 	

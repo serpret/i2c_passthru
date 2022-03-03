@@ -159,510 +159,10 @@ module tb();
 	
 	
 	
-	task test_idle_high;
-		realtime start_time;
-		begin
-			$display("--- test_idle_high %t ---", $realtime);
 	
-			//do a start with no stop but release the bus
-			i_sda = 1'b1;
-			i_scl = 1'b1;
-			repeat(2)@(posedge i_clk);
-			i_sda = 1'b0;
-			repeat(1)@(posedge i_clk);
-			i_scl = 1'b0;
-			repeat(1)@(posedge i_clk);
-			i_sda = 1'b1;
-			repeat(1)@(posedge i_clk);
-			i_scl = 1'b1;
-			repeat(1)@(posedge i_clk);
+	
+	
 
-
-
-			
-			//idle shouldn't rise immediately
-				start_time = $realtime;
-	
-			while( time_elapsed( start_time) < NS_T_HI_MIN) begin
-			
-				#1;
-				if(
-					o_idle_timeout !== 1'b0 ||
-					o_idle         !== 1'b0 ||
-					o_stuck        !== 1'b0
-				) begin
-					$display("    fail 0 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk);
-			end
-			
-			
-			//wait for o_idle_timeout pulse
-			while( !o_idle_timeout && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
-				@(posedge i_clk) #1;
-			end
-			
-			if( !o_idle_timeout  ) begin
-				$display("    fail 1 %t", $realtime);
-				failed = 1;
-			end
-			@(posedge i_clk);
-			
-			#1;
-			//wait for o_idle to rise
-			while( (!o_idle || o_stuck) && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
-				@(posedge i_clk) #1;
-			end
-			
-			if(
-				o_idle_timeout !== 1'b0 ||
-				o_idle         !== 1'b1 ||
-				o_stuck        !== 1'b0
-			) begin
-				$display("    fail 2 %t", $realtime);
-				failed = 1;
-			end
-			
-			//make sure signals dont change
-			start_time = $realtime;
-			#1;
-			while( time_elapsed( start_time) < NS_T_HI_MAX) begin
-			
-				#1;
-				if(
-					o_idle  !== 1'b1 ||
-					o_stuck !== 1'b0
-				) begin
-					$display("    fail 3 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk);
-			end
-		end
-	endtask
-	
-	
-	
-	task test_stop;
-		realtime start_time;
-		begin
-			$display("--- test_stop %t ---", $realtime);
-			
-			//do a start with no stop but release the bus
-			i_sda = 1'b1;
-			i_scl = 1'b1;
-			repeat(2)@(posedge i_clk);
-			i_sda = 1'b0;
-			repeat(1)@(posedge i_clk);
-			i_scl = 1'b0;
-			repeat(1)@(posedge i_clk);
-
-			
-			#1
-			if(
-				o_idle  !== 1'b0 //||
-				//o_stuck !== 1'b0
-			) begin
-				$display("    fail 0 %t", $realtime);
-				failed = 1;
-			end
-			
-			i_sda = 1'b1;
-			start_time = $realtime;
-
-			//scl is low, bring sda high and make sure this isn't used as a stop condition
-			while( time_elapsed( start_time) < NS_T_LOW_MAX) begin
-				#1
-				if(
-					o_idle_timeout !== 1'b0 ||
-					o_idle         !== 1'b0 ||
-					o_stuck        !== 1'b0
-				) begin
-					$display("    fail 1 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk);
-			end
-			
-			//now bring scl high and try a valid stop condition
-			i_sda = 1'b0;
-			@(posedge i_clk);
-			i_scl = 1'b1;
-			repeat(2)@(posedge i_clk);
-			i_sda = 1'b1;
-			@(posedge i_clk);
-			
-			start_time = $realtime;
-			//wait for o_idle to go high
-			while( (!o_idle || o_stuck) && ~o_idle_timeout && (time_elapsed( start_time) < NS_T_LOW_MAX) ) begin
-				@(posedge i_clk) #1;
-			end
-			
-			if(
-				o_idle_timeout !== 1'b0 ||
-				o_idle         !== 1'b1 ||
-				o_stuck        !== 1'b0
-			) begin
-				$display("    fail 2 %t", $realtime);
-				failed = 1;
-			end
-
-		end
-	endtask
-	
-	
-	
-	task test_stuck_scllow;
-		realtime start_time;
-		begin
-			$display("--- test_stuck_scllow %t ---", $realtime);
-			rst_uut();
-			i_sda = 1'b1;
-			i_scl = 1'b0;
-			@(posedge i_clk);
-			
-			//stuck should not rise before stuck min time
-			start_time = $realtime;
-			#1;
-			while( time_elapsed( start_time) < NS_T_BUS_STUCK_MIN) begin
-				#1
-				if(
-					//o_idle  !== 1'b0 ||
-					o_stuck !== 1'b0 ||
-					o_scl   !== 1'b1 ||
-					o_sda   !== 1'b1
-				) begin
-					$display("    fail 0 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk);
-			end
-			
-			//wait for stuck to go high
-			while( !o_stuck && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX) ) begin
-				#1;
-				if(
-					//o_idle  !== 1'b0 //||
-					//o_stuck !== 1'b0
-					o_scl   !== 1'b1 ||
-					o_sda   !== 1'b1
-				) begin
-					$display("    fail 1 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk) ;
-			end
-			
-			
-			//make sure outputs dont change for 20us
-			start_time = $realtime;
-			while( time_elapsed( start_time) < 20_000) begin
-				#1
-				if(
-					//o_idle  !== 1'b0 ||
-					o_stuck !== 1'b1
-				) begin
-					$display("    fail 2 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk);
-			end
-			
-			//make sure outputs done change and module is creating stop events at least every 20us
-			start_time = $realtime;
-			while( time_elapsed( start_time) < NS_T_BUS_STUCK_MIN) begin
-				#1
-				if(
-					//o_idle  !== 1'b0 ||
-					o_stuck !== 1'b1
-				) begin
-					$display("    fail 3 %t", $realtime);
-					failed = 1;
-				end
-				
-				if( time_elapsed(time_last_stop) > 20_000) begin
-					$display("    fail 4 %t", $realtime);
-					failed = 1;
-				end
-				
-				@(posedge i_clk);
-			end
-			
-			i_scl = 1'b1;
-			i_sda = 1'b1;
-			
-			//wait for stuck to go low
-			start_time = $realtime;
-			while( o_stuck && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX) ) begin
-				@(posedge i_clk) ;
-			end
-			
-			//make sure stuck is low
-			#1
-			if(
-				//o_idle  !== 1'b0 ||
-				o_stuck !== 1'b0
-			) begin
-				$display("    fail 5 %t", $realtime);
-				failed = 1;
-			end
-			@(posedge i_clk);
-			
-			
-			//wait 20 us and make sure stop events stop
-			#20_000;
-			start_time = $realtime;
-			while( time_elapsed( start_time) < 20_000) begin
-			//while( time_elapsed( start_time) < NS_T_BUS_STUCK_MIN ) begin
-				#1
-				if(
-					//o_idle  !== 1'b1 ||
-					o_scl   !== 1'b1 ||
-					o_sda   !== 1'b1 ||
-					o_stuck !== 1'b0
-				) begin
-					$display("    fail 6 %t", $realtime);
-					failed = 1;
-				end
-				
-				if( time_elapsed(time_last_stop) < 5_000) begin
-					$display("    fail 7 %t", $realtime);
-					failed = 1;
-				end
-				
-				@(posedge i_clk);
-			end
-			
-		end
-	endtask
-	
-	
-	
-	
-	task test_stuck_sdalow;
-		realtime start_time;
-		begin
-			$display("--- test_stuck_sdalow %t ---", $realtime);
-			rst_uut();
-			i_sda = 1'b0;
-			i_scl = 1'b1;
-			@(posedge i_clk);
-			
-			
-			//wait for stuck to go high
-			start_time = $realtime;
-			while( !o_stuck && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX) ) begin
-				#1;
-				if(
-					//o_idle  !== 1'b0 //||
-					//o_stuck !== 1'b0
-					o_scl   !== 1'b1 ||
-					o_sda   !== 1'b1
-				) begin
-					$display("    fail 0 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk) ;
-			end
-			
-			//make sure stuck is hi
-			#1
-			if(
-				//o_idle  !== 1'b0 ||
-				o_stuck !== 1'b1
-			) begin
-				$display("    fail 1 %t", $realtime);
-				failed = 1;
-			end
-			@(posedge i_clk);
-			
-			
-			////make sure outputs dont change for 20us
-			//start_time = $realtime;
-			//while( time_elapsed( start_time) < 20_000) begin
-			//	#1
-			//	if(
-			//		//o_idle  !== 1'b0 ||
-			//		o_stuck !== 1'b1
-			//	) begin
-			//		$display("    fail 2 %t", $realtime);
-			//		failed = 1;
-			//	end
-			//	@(posedge i_clk);
-			//end
-			
-			reset_scl_count = 1;
-			#1;
-			reset_scl_count = 0;
-			//wait 500us, there should only be 16 clocks counted
-			start_time = $realtime;
-			while( time_elapsed( start_time) < 500_000) begin
-				i_scl = o_scl;
-				@(posedge i_clk);
-			end
-			
-			#1
-			if(
-				o_idle  !== 1'b0 ||
-				o_scl   !== 1'b1 ||
-				o_sda   !== 1'b1 ||
-				o_stuck !== 1'b1 ||
-				scl_count > 32'h0000_0010 ||
-				scl_count < 32'h0000_000C
-				
-			) begin
-				$display("    fail 2 %t", $realtime);
-				failed = 1;
-			end
-			i_scl = 1'b1;
-			//there should now be long period with no o_scl or o_sda output
-
-			start_time = $realtime;
-			while( time_elapsed( start_time) < NS_T_BUS_STUCK_MIN) begin
-			
-				#1
-				if(
-					//o_idle  !== 1'b1 ||
-					o_scl   !== 1'b1 ||
-					o_sda   !== 1'b1 ||
-					o_stuck !== 1'b1
-				) begin
-					$display("    fail 3 %t", $realtime);
-					failed = 1;
-				end
-
-				@(posedge i_clk);
-			end
-			
-			//wait for stop events to start again
-			start_time = $realtime;
-			while( (o_sda !== 1'b0) && (time_elapsed( start_time) < NS_TB_TIMEOUT) ) begin
-				@(posedge i_clk) ;
-			end
-			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
-					$display("    fail 4 %t", $realtime);
-					failed = 1;
-			end
-			
-			reset_scl_count = 1;
-			#1;
-			reset_scl_count = 0;
-			//wait at least 2 scl counts and release the bus, module should then go back to idle
-			start_time = $realtime;
-			while( (scl_count <3) && (time_elapsed( start_time) < NS_TB_TIMEOUT) ) begin
-				@(posedge i_clk) ;
-			end
-			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
-					$display("    fail 5 %t", $realtime);
-					failed = 1;
-			end
-			
-			i_scl = 1'b1;
-			i_sda = 1'b1;
-			
-
-			start_time = $realtime;
-			while( (o_idle !== 1'b1) && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
-				@(posedge i_clk) ;
-			end
-			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
-					$display("    fail 6 %t", $realtime);
-					failed = 1;
-			end
-			
-			
-			
-			
-		end
-	endtask
-	
-	
-	
-	task test_stuck_sdalow_release_after_16;
-		realtime start_time;
-		begin
-			$display("--- test_stuck_sdalow_release_after_16 %t ---", $realtime);
-			rst_uut();
-			i_sda = 1'b0;
-			i_scl = 1'b1;
-			@(posedge i_clk);
-			
-			
-			//wait for stuck to go high
-			start_time = $realtime;
-			while( !o_stuck && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX) ) begin
-				#1;
-				if(
-					//o_idle  !== 1'b0 //||
-					//o_stuck !== 1'b0
-					o_scl   !== 1'b1 ||
-					o_sda   !== 1'b1
-				) begin
-					$display("    fail 0 %t", $realtime);
-					failed = 1;
-				end
-				@(posedge i_clk) ;
-			end
-			
-			//make sure stuck is hi
-			#1
-			if(
-				//o_idle  !== 1'b0 ||
-				o_stuck !== 1'b1
-			) begin
-				$display("    fail 1 %t", $realtime);
-				failed = 1;
-			end
-			@(posedge i_clk);
-			
-
-			reset_scl_count = 1;
-			#1;
-			reset_scl_count = 0;
-			//wait 500us, there should only be 16 clocks counted
-			start_time = $realtime;
-			while( time_elapsed( start_time) < 500_000) begin
-				i_scl = o_scl;
-				@(posedge i_clk);
-			end
-			
-			#1
-			if(
-				o_idle  !== 1'b0 ||
-				o_scl   !== 1'b1 ||
-				o_sda   !== 1'b1 ||
-				o_stuck !== 1'b1 ||
-				scl_count > 32'h0000_0010 ||
-				scl_count < 32'h0000_000C
-				
-			) begin
-				$display("    fail 2 %t", $realtime);
-				failed = 1;
-			end
-			i_scl = 1'b1;
-			
-			//there should now be long period with no o_scl or o_sda output
-			//wait a little bit and release scl and sda
-			#20_000;
-			i_scl = 1'b1;
-			i_sda = 1'b1;
-
-			
-
-			start_time = $realtime;
-			while( (o_idle !== 1'b1) && (time_elapsed( start_time) < NS_T_HI_MAX) ) begin
-				@(posedge i_clk) ;
-			end
-			if (time_elapsed( start_time) >= NS_TB_TIMEOUT) begin
-					$display("    fail 6 %t", $realtime);
-					failed = 1;
-			end
-			
-
-			
-		end
-	endtask
 	
 	
 	
@@ -679,89 +179,306 @@ endmodule
 
 
 
+module driver_i2c(
 
-module mon_last_stop  (	
-	input i_clk,
 	input i_scl,
 	input i_sda,
 	
-	output realtime time_last_stop
+	//scl timing reference to violate sda timing (see "i_sda_violate")
+	input i_scl_sda_chng_ref,
+	
+	input        i_start,    //set high to start
+	
+	//options during transaction, set these before i_start goes high
+	//and keep them valid until o_idle goes high
+	
+	
+	//timing used for t_low, t_high, and delay used between clock edges and start/stop conditions
+	//(only t_low applicable to slave)
+	input [31:0] i_timing,   
+	
+	//set high before i_start to perform a master operation (else slave)
+	input        i_is_mstr,  
+	
+	//set high before i_start to have 8 times longer 
+	//clock low periods (valid for master and slave)
+	input        i_clock_low_by8, 
+	                               
+	//set i_sda_violate high before i_start to have sda perform its changes for data 
+	//a data transaction shortly after scl rises or shortly before scl falls 
+	//This violates setup and hold times. For slaves i_sda_violate only violates scl rises.
+	//set i_sda_violate_time to preferred time for sda to transition before scl falls
+	//("i_sda_violate_time" only used by master for falling scl transition, for rising
+	// scl transition and for slaves see "i_scl_sda_chng_ref")
+	input        i_sda_violate, 
+	//input [31:0] i_sda_violate_time,
+	                                   
+	                                   
+	//set high to not start/stop at begin/end of transaction
+	input        i_dont_stop    
+	input        i_dont_start   
+	
+	//max 15, set to 0 for just 1 byte. number of bytes to write. a byte in i2c context is 9bits.
+	//(address byte is considered a write byte, expected read bytes should be filled with 9'h1FE )
+	input [3:0] i_stop_after_byte, 
+	
+	//options to insert extra start/stop after specified byte
+	//set all bits high to ignore (not insert extra start/stop)
+	//if both are set to same byte and not ignored
+	//then stop is performed first, then start follows.
+	//to do extra stop/start immediately after first byte set to 0
+	input [3:0] i_extra_stop_after_byte,  
+	input [3:0] i_extra_start_after_byte, 
+
+	//data for write bytes.  i_wrbyte_0 is first to be written.  
+	//msb is written out first. bit0 is typically the ack bit.
+	input [8:0] i_wrbyte_0  ;
+	input [8:0] i_wrbyte_1  ;
+	input [8:0] i_wrbyte_2  ;
+	input [8:0] i_wrbyte_3  ;
+	input [8:0] i_wrbyte_4  ;
+	input [8:0] i_wrbyte_5  ;
+	input [8:0] i_wrbyte_6  ;
+	input [8:0] i_wrbyte_7  ;
+	input [8:0] i_wrbyte_8  ;
+	input [8:0] i_wrbyte_9  ;
+	input [8:0] i_wrbyte_10 ;
+	input [8:0] i_wrbyte_11 ;
+	input [8:0] i_wrbyte_12 ;
+	input [8:0] i_wrbyte_13 ;
+	input [8:0] i_wrbyte_14 ;
+	input [8:0] i_wrbyte_15 ;
+
+	output o_scl,
+	output o_sda,
+	
+	output reg o_idle
+	
+
 );
+	localparam VIOLATE_TIME = 100; //assuming 
 
-	reg setup_level_good;
-	reg hold_level_good;
-	reg in_stop;
-	
-	realtime setup_start_time ;
-	realtime hold_start_time  ;
-	
-	
-	always @(i_scl, i_sda) begin
-		if( i_scl & ~i_sda) begin
-			setup_level_good = 1;
-			hold_level_good  = 0;
+	reg [3:0] bit_cnt;
+	reg [3:0] byte_cnt;
+	reg [8:0] cur_byte;
+	//reg       ref_scl_for_sda;
+	wire final_byte;
+	wire stop_byte;
+	wire start_byte;
 
-			setup_start_time = $realtime;
-		end
-		else if( i_scl & i_sda) begin
-			
-			if( setup_level_good && time_elapsed( setup_start_time) > 3000) begin
-				hold_level_good  = 1;
-				hold_start_time = $realtime;
+	
+	assign final_byte = (i_stop_after_byte       ) == byte_cnt;
+	assign  stop_byte = (i_extra_start_after_byte) == byte_cnt;
+	assign start_byte = (i_extra_stop_after_byte ) == byte_cnt;
+
+	
+	always @(posedge i_start) begin
+		bit_cnt  = 0;
+		byte_cnt = 0;
+		cur_byte = i_wrbyte_0;
+		//state    = 
+		o_idle = 1'b0;
+		//ref_scl_for_sda = 1'b1;
+		o_scl = 1'b1;
+		o_sda = 1'b1;
+		
+		if( i_is_mstr) begin
+			if( i_dont_start) begin
+				o_sda    = 1'b1;
+				//ref_scl_for_sda <= #i_timing 1'b0;
+				o_scl <= #i_timing 1'b0;
+			end 
+			else begin
+				o_sda   <= #i_timing 1'b0;
+				//ref_scl_for_sda <= #(2*i_timing) 1'b0;
+				o_scl <= #(2*i_timing) 1'b0;
+			end
+		end 
+	end
+	
+	//generate o_scl next rising edge
+	always @(negedge i_scl) begin
+		
+		if( i_clock_low_by8) o_scl <= #(8*i_timing) 1'b1;
+		else                 o_scl <= #(  i_timing) 1'b1;
+
+	end
+	
+	//if i_clock_low_by8 and slave that means we are clock stretching
+	always @(negedge i_scl) begin
+		if(!i_is_mstr && i_clock_low_by8) o_scl = 1'b0; 
+	end
+	
+	//generate o_scl next falling edge
+	always @(posedge i_scl) begin
+		if(i_is_mstr) begin
+			if( 4'hA == bit_cnt) begin //control event bit
+				if(      final_byte)               o_scl  =               1'b1;   //do nothing
+				else if ( stop_byte && start_byte) o_scl <= #(3*i_timing) 1'b0;
+				else if ( stop_byte || start_byte) o_scl <= #(2*i_timing) 1'b0;
 			end
 			else begin
-				setup_level_good = 0;
-				hold_level_good  = 0;
-
+				o_scl <= #(i_timing) 1'b0; //normal data bit
+			end
+		end
+	end
+	
+	//bit count and byte count
+	always @(negedge i_scl) begin
+		if( 4'hA == bit_cnt ) //ctrl bit
+			bit_cnt <= 4'h1;
+			byte_cnt <= byte_cnt + 1'b1;
+		else if (4'h9 == bit_cnt) begin
+			if(stop_byte || start_byte) begin
+				bit_cnt <= bit_cnt + 1'b1;
+			end
+			else begin
+				bit_cnt  <= 4'h1;
+				byte_cnt <= byte_cnt + 1'b1;
 			end
 		end
 		else begin
-			setup_level_good = 0;
-			hold_level_good  = 0;
+			bit_cnt <= bit_cnt + 1'b1;
+		
 		end
-
 	end
 	
-	
-	always @(posedge i_clk) begin
-		if( setup_level_good && hold_level_good && time_elapsed( hold_start_time) > 3000) begin
-			in_stop <= 1'b1;
-			if(!in_stop) time_last_stop <= $realtime;
-			
+	//handle cur_byte
+	always @(negedge i_scl) begin
+		if(   //4'h0 == bit_cnt 
+		        4'hA == bit_cnt 
+			|| (4'h9 == bit_cnt && !(stop_byte || start_byte)) 
+		) begin
+			case( byte_cnt)
+				0  : cur_byte <= i_wrbyte_1 ;
+				1  : cur_byte <= i_wrbyte_2 ;
+				2  : cur_byte <= i_wrbyte_3 ;
+				3  : cur_byte <= i_wrbyte_4 ;
+				4  : cur_byte <= i_wrbyte_5 ;
+				5  : cur_byte <= i_wrbyte_6 ;
+				6  : cur_byte <= i_wrbyte_7 ;
+				7  : cur_byte <= i_wrbyte_8 ;
+				8  : cur_byte <= i_wrbyte_9 ;
+				9  : cur_byte <= i_wrbyte_10;
+				10 : cur_byte <= i_wrbyte_11;
+				11 : cur_byte <= i_wrbyte_12;
+				12 : cur_byte <= i_wrbyte_13;
+				13 : cur_byte <= i_wrbyte_14;
+				14 : cur_byte <= i_wrbyte_15;
+				15 : cur_byte <= cur_byte; //last byte. ignore.
+			endcase
 		end
 		else begin
-			in_stop <= 1'b0;
-			
+			cur_byte <= (cur_byte[7:0] << 1);
 		end
-	end
-	
-	
 		
-	function realtime time_elapsed;
-		input realtime start;
-		begin
-			time_elapsed = $realtime - start;
+	end
+	
+	//handle o_sda data transitions 
+	always @( i_scl_sda_chng_ref) begin
+		if( i_sda_violate) begin
+			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+				if( 4'hA == bit_cnt && final_byte && !i_dont_stop
+				    4'hA == bit_cnt &&
+				o_sda <= cur_byte[8];
+			end
+			else begin // falling edge of reference scl
+				o_sda <= ~o_sda;
+			end
 		end
-	endfunction
+		else begin
+			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+				o_sda <= o_sda; //no change, ignore
+			end
+			else begin // falling edge of reference scl
+				o_sda <= cur_byte[8];
+			end
+
+		end
+	end
 	
+	
+	//handle sda_o data transitions if i_sda_violate is low
+	//always @(negedge i_scl) begin
+	//	if( !i_sda_violate) begin
+	//	
+	//
+	//	end
+	//end
+	
+	////generate ref_scl_for_sda
+	//always @(negedge i_scl) begin
+	//	if( !o_idle) begin
+	//		ref_scl_for_sda  = i_scl;
+	//	end
+	//end
+	//
+	//always @(posedge i_scl) begin
+	//	if( !o_idle) begin
+	//		if( i_is_mstr) ref_scl_for_sda <= #i_timing 1'b0;
+	//	end
+	//end
+	//
+	//always @(negedge i_scl_violate_ref) begin
+	//	
+	//end
+	//
+	////generate o_sda
+	//always @(ref_scl_for_sda) begin
+	//	if( i_sda_violate) begin
+	//		o_sda 
+	//	end
+	//	else begin
+	//	
+	//	end
+	//end
+	//
+	////generate o_scl
+	//always @(
+	//
+	//always @(negedge ref_scl_for_sda) begin
+	//	if( i_sda_violate) begin
+	//		o_sda = ~o_sda;
+	//		o_scl <= #i_sda_violate_time 1'b0;
+	//		
+	//	end 
+	//	else begin
+	//		o_scl = 1'b0;
+	//		o_sda = cur_byte[8];
+	//	end
+	//end
+	//
+	//always @(negedge i_scl) begin
+	//	if( 4'h9 == bit_cnt) begin
+	//		if(  i_extra_stop_after_byte == byte_cnt) begin
+	//			o_sda = 0;
+	//			ref_scl_for_sda =
+	//			o_sda <= 
+	//			
+	//		end
+	//	end
+	//	else if (4'hA == bit_cnt) begin
+	//	
+	//	
+	//	end
+	//	else begin
+	//		bit_cnt <= bit_cnt + 1'b1;
+	//	end
+	//
+	//end
+	//
+	//
+	//always @(posedge i_scl) begin
+	//
+	//end
+	
+	
+	
+
 endmodule
 
 
 
-module mon_count_posedge (
-	input i_rst,
-	input i_signal,
-	
-	output reg [31:0] o_cnt
-);
 
-	always @(posedge i_rst) begin
-		o_cnt = 0;
-	end
-	
-	always @(posedge i_signal) begin
-		o_cnt = o_cnt + 1'b1;
-	end
 
-endmodule
 	

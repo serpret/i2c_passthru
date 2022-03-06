@@ -69,7 +69,7 @@ module i2c_passthru #(
 	parameter WIDTH_F_REF_T_HI     = 9,
 	parameter WIDTH_F_REF_T_LOW    = 6,
 	
-	parameter WIDTH_F_REF_SLOW_T_STUCK_MAX = 8,
+	parameter WIDTH_F_REF_SLOW_T_STUCK_MAX = 8
 	
 
 )
@@ -109,13 +109,11 @@ module i2c_passthru #(
 );
 
 	// ********* SIGNAL DECLARATIONS ****************************************
-	output reg o_cha_scl_prereg;
-	output reg o_cha_sda_prereg;
-	output reg o_chb_scl_prereg;
-	output reg o_chb_sda_prereg;
+	reg o_cha_scl_prereg;
+	reg o_cha_sda_prereg;
+	reg o_chb_scl_prereg;
+	reg o_chb_sda_prereg;
 
-	wire cha_stuck;
-	wire chb_stuck;
 
 
 	
@@ -244,7 +242,7 @@ module i2c_passthru #(
 
 		end
 		else begin
-			case( {cha_ismst, mst_is_tx})
+			case( {cha_ismst, rxtx_slv_is_rx})
 				2'b00: begin
 					o_cha_scl_prereg = bittx_scl;
 					o_cha_sda_prereg = bittx_sda;
@@ -297,7 +295,7 @@ module i2c_passthru #(
 		//output logic for channel a
 	always @(*) begin
 
-		case( {cha_ismst, mst_is_tx})
+		case( {cha_ismst, rxtx_slv_is_rx})
 			2'b00: begin
 				bittx_scl_in  =  cha_scl_fltrd   ;
 				bittx_sda_in  =  cha_sda_fltrd   ;
@@ -379,7 +377,7 @@ module i2c_passthru #(
 		.F_REF_SLOW_T_STUCK_MAX      (F_REF_SLOW_T_STUCK_MAX      ),
 		.WIDTH_F_REF_T_LOW           (WIDTH_F_REF_T_LOW           ),
 		.WIDTH_F_REF_T_HI            (WIDTH_F_REF_T_HI            ),
-		.WIDTH_F_REF_SLOW_T_STUCK_MAX(WIDTH_F_REF_SLOW_T_STUCK_MAX),
+		.WIDTH_F_REF_SLOW_T_STUCK_MAX(WIDTH_F_REF_SLOW_T_STUCK_MAX)
 
 	)  u_idle_stuck_cha   (
 		.i_clk         (i_clk                 ),
@@ -404,7 +402,7 @@ module i2c_passthru #(
 		.F_REF_SLOW_T_STUCK_MAX      (F_REF_SLOW_T_STUCK_MAX      ),
 		.WIDTH_F_REF_T_LOW           (WIDTH_F_REF_T_LOW           ),
 		.WIDTH_F_REF_T_HI            (WIDTH_F_REF_T_HI            ),
-		.WIDTH_F_REF_SLOW_T_STUCK_MAX(WIDTH_F_REF_SLOW_T_STUCK_MAX),
+		.WIDTH_F_REF_SLOW_T_STUCK_MAX(WIDTH_F_REF_SLOW_T_STUCK_MAX)
 
 	)  u_idle_stuck_chb   (
 		.i_clk         (i_clk                 ),
@@ -450,7 +448,7 @@ module i2c_passthru #(
 		.i_rx_sda_init      (bitrx_sda_init       ),
 		
 		.o_start            ( rxtx_start          ),
-		.o_slv_is_rx        ( rxtx_slv_is_rx      ),
+		.o_slv_is_rx        ( rxtx_slv_is_rx      )
 	);
 	
 	

@@ -162,7 +162,7 @@ module i2c_passthru_idle_stuck_det #(
 			begin
 			 	timer_tlow_rst = 1;
 
-				if( F_REF_SLOW_T_HI_MAX == timer_change && (prev_scl && prev_sda)) 
+				if( (F_REF_SLOW_T_HI_MAX == timer_change) && (prev_scl && prev_sda)) 
 					nxt_state = ST_IDLE_TIMEOUT;
 				else if (posedge_sda )
 				//else if (posedge_sda && i_scl)

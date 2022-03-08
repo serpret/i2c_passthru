@@ -42,7 +42,7 @@ module i2c_passthru_rxtx_ctrl(
 	input i_rx_sda_init,
 	
 	output reg o_start,
-	output reg o_slv_is_rx
+	output reg o_tx_to_mst
 );
 	reg [1:0] state, nxt_state;
 	reg [3:0] bit_cnt, nxt_bit_cnt;
@@ -104,18 +104,18 @@ module i2c_passthru_rxtx_ctrl(
 	
 	
 	localparam ST_MST_RX_WAIT     = 0;
-	localparam ST_MST_RX_START   = 1;
-	localparam ST_SLV_RX_WAIT     = 3;
-	localparam ST_SLV_RX_START   = 4;
+	localparam ST_MST_RX_START    = 1;
+	localparam ST_SLV_RX_WAIT     = 2;
+	localparam ST_SLV_RX_START    = 3;
 
 	
 	always @(*) begin
 		//default else case
 		nxt_state = state;
 		
-		o_start       = 1'b0;
-		inc_bit_cnt   = 1'b0;
-		o_slv_is_rx   = 1'b0;
+		o_start         = 1'b0;
+		inc_bit_cnt     = 1'b0;
+		o_tx_to_mst   = 1'b0;
 		
 		
 		case( state)
@@ -131,13 +131,14 @@ module i2c_passthru_rxtx_ctrl(
 			ST_MST_RX_START :  
 			begin
 				o_start     = 1'b1;
+				inc_bit_cnt = 1'b1;
 				
 				nxt_state = ST_MST_RX_WAIT;
 			end
 			
 			ST_SLV_RX_WAIT  :  
 			begin
-				o_slv_is_rx = 1'b1;
+				o_tx_to_mst = 1'b1;
 
 				if( i_rx_done && i_tx_done) begin
 					if( bit_willbe_slv_rx)  nxt_state = ST_SLV_RX_START;
@@ -147,8 +148,9 @@ module i2c_passthru_rxtx_ctrl(
 			
 			ST_SLV_RX_START :  
 			begin		
-				o_slv_is_rx = 1'b1;
-				o_start     = 1'b1;
+				o_tx_to_mst = 1'b1;
+				o_start       = 1'b1;
+				inc_bit_cnt   = 1'b1;
 				
 				nxt_state = ST_SLV_RX_WAIT;
 
@@ -207,7 +209,8 @@ module i2c_passthru_rxtx_ctrl(
 	//synchronous logic that requires reset
 	always @(posedge i_clk) begin
 		//if( i_rstn) begin
-		if( cha_start || chb_start ) begin
+		//if( cha_start || chb_start ) begin
+		if( !(cha_start || chb_start) ) begin
 			state        <= nxt_state;
 			bit_cnt      <= nxt_bit_cnt;
 			//o_slv_is_rx  <= nxt_slv_is_rx;

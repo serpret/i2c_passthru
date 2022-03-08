@@ -14,12 +14,12 @@ module tb();
 	localparam NS_T_LOW_MAX     =    6000;
 	
 	
-	localparam F_REF_T_R                    = 2;
+	localparam F_REF_T_R                    = 4;
 	localparam F_REF_T_SU_DAT               = 2;
 	localparam F_REF_T_HI                   =50;  //max value (timeout)
 	localparam F_REF_T_LOW                  = 5;
 	localparam F_REF_SLOW_T_STUCK_MAX       = 2;
-	localparam WIDTH_F_REF_T_R              = 2;
+	localparam WIDTH_F_REF_T_R              = 3;
 	localparam WIDTH_F_REF_T_SU_DAT         = 2;
 	localparam WIDTH_F_REF_T_HI             = 6;
 	localparam WIDTH_F_REF_T_LOW            = 3;
@@ -262,8 +262,14 @@ module tb();
 	
 	//channel A
 	always @( o_cha_scl, drv_cha_scl) begin
-		if( o_cha_scl & drv_cha_scl) cha_scl <= #time_rise 1'b1;
-		else                         cha_scl <= #time_fall 1'b0;
+		//if( !cha_chb_switch) begin
+			if( o_cha_scl & drv_cha_scl) cha_scl <= #time_rise 1'b1;
+			else                         cha_scl <= #time_fall 1'b0;
+		//end
+		//else begin
+		//
+		//
+		//end
 	end
 	
 	always @( o_cha_scl, drv_cha_scl) begin
@@ -317,11 +323,24 @@ module tb();
 
 		init_drv_cha_wrbytes();
 		init_drv_chb_wrbytes();
+		#10_000;
 		
 
+		drv_cha_start                  = 1'b1    ;
+		drv_cha_timing                 = 32'd5000;
+		drv_cha_is_mstr                = 1'b1    ;
+		drv_cha_clock_low_by8          = 1'b0    ;
+		drv_cha_sda_violate            = 1'b0    ;
+		drv_cha_dont_stop              = 1'b0    ;
+		drv_cha_dont_start             = 1'b0    ;
+		drv_cha_stop_after_byte        = 4'b1    ;
+		drv_cha_extra_stop_after_byte  = 4'hF    ;
+		drv_cha_extra_start_after_byte = 4'hF    ;
+		
+		
 		drv_chb_start                  = 1'b1    ;
 		drv_chb_timing                 = 32'd5000;
-		drv_chb_is_mstr                = 1'b1    ;
+		drv_chb_is_mstr                = 1'b0    ;
 		drv_chb_clock_low_by8          = 1'b0    ;
 		drv_chb_sda_violate            = 1'b0    ;
 		drv_chb_dont_stop              = 1'b0    ;
@@ -330,9 +349,11 @@ module tb();
 		drv_chb_extra_stop_after_byte  = 4'hF    ;
 		drv_chb_extra_start_after_byte = 4'hF    ;
 		
+		
+		
 		@(posedge drv_cha_idle);
 		
-		
+		#5000;
 		
 		
 		
@@ -370,6 +391,9 @@ module tb();
 			chb_scl       = 1;
 			chb_sda       = 1;
 			
+			drv_cha_scl_sda_chng_ref = 1;
+			drv_chb_scl_sda_chng_ref = 1;
+			
 			time_rise         = 32'h0000_0000;
 			time_fall         = 32'h0000_0000;
 			time_sda_ref_rise = 32'h0000_0000;
@@ -377,8 +401,10 @@ module tb();
 			
 			
 			
+			
 			init_drv_cha();
 			init_drv_chb();
+			#1;
 			
 			
 		end
@@ -604,6 +630,11 @@ module driver_i2c(
 	
 	assign nxt_bit_ctrl = (final_byte || stop_byte || start_byte) && last_bit;
 
+	initial begin
+		o_idle = 1'b1;
+		o_scl = 1'b1;
+		o_sda = 1'b1;
+	end
 	
 	always @(posedge i_start) begin
 		bit_cnt  = 0;
@@ -631,27 +662,32 @@ module driver_i2c(
 	
 	//generate o_scl next rising edge
 	always @(negedge i_scl) begin
-		
-		if( i_clock_low_by8) o_scl <= #(8*i_timing) 1'b1;
-		else                 o_scl <= #(  i_timing) 1'b1;
+		if( !o_idle) begin
+			if( i_clock_low_by8) o_scl <= #(8*i_timing) 1'b1;
+			else                 o_scl <= #(  i_timing) 1'b1;
+		end
 
 	end
 	
 	//if i_clock_low_by8 and slave that means we are clock stretching
 	always @(negedge i_scl) begin
-		if(!i_is_mstr && i_clock_low_by8) o_scl = 1'b0; 
+		if( !o_idle) begin
+			if(!i_is_mstr && i_clock_low_by8) o_scl = 1'b0; 
+		end
 	end
 	
 	//generate o_scl next falling edge
 	always @(posedge i_scl) begin
-		if(i_is_mstr) begin
-			if( nxt_bit_ctrl) begin //control event bit
-				if(      final_byte)               o_scl  =               1'b1;   //do nothing
-				else if ( stop_byte && start_byte) o_scl <= #(3*i_timing) 1'b0;
-				else if ( stop_byte || start_byte) o_scl <= #(2*i_timing) 1'b0;
-			end
-			else begin
-				o_scl <= #(i_timing) 1'b0; //normal data bit
+		if( !o_idle) begin
+			if(i_is_mstr) begin
+				if( nxt_bit_ctrl) begin //control event bit
+					if(      final_byte)               o_scl  =               1'b1;   //do nothing
+					else if ( stop_byte && start_byte) o_scl <= #(3*i_timing) 1'b0;
+					else if ( stop_byte || start_byte) o_scl <= #(2*i_timing) 1'b0;
+				end
+				else begin
+					o_scl <= #(i_timing) 1'b0; //normal data bit
+				end
 			end
 		end
 	end
@@ -679,15 +715,17 @@ module driver_i2c(
 	
 	//byte count and bit count
 	always @( posedge i_scl_sda_chng_ref) begin
-		if( last_bit ) begin
-		
-			if( nxt_bit_ctrl) bit_cnt <= 4'h0;
-			else              bit_cnt <= 4'h1;
+		if( !o_idle) begin
+			if( last_bit ) begin
 			
-			byte_cnt <= byte_cnt + 1'b1;
-		end
-		else begin
-			bit_cnt <= bit_cnt + 1'b1;
+				if( nxt_bit_ctrl) bit_cnt <= 4'h0;
+				else              bit_cnt <= 4'h1;
+				
+				byte_cnt <= byte_cnt + 1'b1;
+			end
+			else begin
+				bit_cnt <= bit_cnt + 1'b1;
+			end
 		end
 	end
 	
@@ -730,28 +768,30 @@ module driver_i2c(
 	
 	//handle cur_byte
 	always @( posedge i_scl_sda_chng_ref) begin
-		if( second_to_last_bit) begin
-			case( byte_cnt)
-				0  : cur_byte <= i_wrbyte_1 ;
-				1  : cur_byte <= i_wrbyte_2 ;
-				2  : cur_byte <= i_wrbyte_3 ;
-				3  : cur_byte <= i_wrbyte_4 ;
-				4  : cur_byte <= i_wrbyte_5 ;
-				5  : cur_byte <= i_wrbyte_6 ;
-				6  : cur_byte <= i_wrbyte_7 ;
-				7  : cur_byte <= i_wrbyte_8 ;
-				8  : cur_byte <= i_wrbyte_9 ;
-				9  : cur_byte <= i_wrbyte_10;
-				10 : cur_byte <= i_wrbyte_11;
-				11 : cur_byte <= i_wrbyte_12;
-				12 : cur_byte <= i_wrbyte_13;
-				13 : cur_byte <= i_wrbyte_14;
-				14 : cur_byte <= i_wrbyte_15;
-				15 : cur_byte <= cur_byte; //last byte. ignore.
-			endcase
-		end
-		else if( !nxt_bit_ctrl) begin
-			cur_byte <= (cur_byte[7:0] << 1);
+		if( !o_idle) begin
+			if( second_to_last_bit) begin
+				case( byte_cnt)
+					0  : cur_byte <= i_wrbyte_1 ;
+					1  : cur_byte <= i_wrbyte_2 ;
+					2  : cur_byte <= i_wrbyte_3 ;
+					3  : cur_byte <= i_wrbyte_4 ;
+					4  : cur_byte <= i_wrbyte_5 ;
+					5  : cur_byte <= i_wrbyte_6 ;
+					6  : cur_byte <= i_wrbyte_7 ;
+					7  : cur_byte <= i_wrbyte_8 ;
+					8  : cur_byte <= i_wrbyte_9 ;
+					9  : cur_byte <= i_wrbyte_10;
+					10 : cur_byte <= i_wrbyte_11;
+					11 : cur_byte <= i_wrbyte_12;
+					12 : cur_byte <= i_wrbyte_13;
+					13 : cur_byte <= i_wrbyte_14;
+					14 : cur_byte <= i_wrbyte_15;
+					15 : cur_byte <= cur_byte; //last byte. ignore.
+				endcase
+			end
+			else if( !nxt_bit_ctrl) begin
+				cur_byte <= (cur_byte[7:0] << 1);
+			end
 		end
 		
 	end
@@ -781,76 +821,78 @@ module driver_i2c(
 	
 	//handle o_sda data transitions 
 	always @( i_scl_sda_chng_ref) begin
-		if( i_sda_violate) begin
-			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
-				if( nxt_bit_ctrl ) begin //control event bit
-					if( i_is_mstr) begin
-						if(      final_byte) begin
-	
-							o_sda <= #i_timing 1'b1;
-							
-							o_idle <= #(2*i_timing) 1'b1;
+		if( !o_idle) begin
+			if( i_sda_violate) begin
+				if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+					if( nxt_bit_ctrl ) begin //control event bit
+						if( i_is_mstr) begin
+							if(      final_byte) begin
+		
+								o_sda <= #i_timing 1'b1;
+								
+								o_idle <= #(2*i_timing) 1'b1;
+							end
+							else if ( stop_byte && start_byte) begin
+								
+								o_sda <= #(  i_timing) 1'b1;
+								o_sda <= #(2*i_timing) 1'b0;
+							end
+							else if ( stop_byte )               o_sda <= #i_timing 1'b1;
+							else if ( start_byte)               o_sda <= #i_timing 1'b0;
 						end
-						else if ( stop_byte && start_byte) begin
-							
-							o_sda <= #(  i_timing) 1'b1;
-							o_sda <= #(2*i_timing) 1'b0;
+						else begin //not master
+							o_sda <= 1'b1;
 						end
-						else if ( stop_byte )               o_sda <= #i_timing 1'b1;
-						else if ( start_byte)               o_sda <= #i_timing 1'b0;
+						
 					end
-					else begin //not master
-						o_sda <= 1'b1;
+					else begin 
+						o_sda <= cur_byte[8];
+					end
+				end
+				else begin // falling edge of reference scl
+					o_sda <= ~o_sda;
+					//o_sda <= 1'bX;
+				end
+			end
+			else begin // if( !i_sda_violate)
+				if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+					o_sda <= o_sda; //no change, ignore
+				end
+				else begin // falling edge of reference scl
+					
+					
+					if( nxt_bit_ctrl ) begin //control event bit
+						if( i_is_mstr) begin
+							if(      final_byte) begin                
+								o_sda <=               1'b0;
+								o_sda <= #(2*i_timing) 1'b1;
+								
+								o_idle <= #(2*i_timing) 1'b1;
+							
+							end
+							else if ( stop_byte && start_byte) begin
+								o_sda <=               1'b0;
+								o_sda <= #(2*i_timing) 1'b1;
+								o_sda <= #(3*i_timing) 1'b0;
+							end
+							else if ( stop_byte ) begin
+								o_sda <=               1'b0;
+								o_sda <= #(2*i_timing) 1'b1;
+							end
+							else if ( start_byte) begin
+								o_sda <=               1'b1;
+								o_sda <= #(2*i_timing) 1'b0;
+							end
+						end
+						else begin //not master
+							o_sda <= 1'b1;
+						end
+					end
+					else begin 
+						o_sda <= cur_byte[8];
 					end
 					
 				end
-				else begin 
-					o_sda <= cur_byte[8];
-				end
-			end
-			else begin // falling edge of reference scl
-				o_sda <= ~o_sda;
-				//o_sda <= 1'bX;
-			end
-		end
-		else begin // if( !i_sda_violate)
-			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
-				o_sda <= o_sda; //no change, ignore
-			end
-			else begin // falling edge of reference scl
-				
-				
-				if( nxt_bit_ctrl ) begin //control event bit
-					if( i_is_mstr) begin
-						if(      final_byte) begin                
-							o_sda <=               1'b0;
-							o_sda <= #(2*i_timing) 1'b1;
-							
-							o_idle <= #(2*i_timing) 1'b1;
-						
-						end
-						else if ( stop_byte && start_byte) begin
-							o_sda <=               1'b0;
-							o_sda <= #(2*i_timing) 1'b1;
-							o_sda <= #(3*i_timing) 1'b0;
-						end
-						else if ( stop_byte ) begin
-							o_sda <=               1'b0;
-							o_sda <= #(2*i_timing) 1'b1;
-						end
-						else if ( start_byte) begin
-							o_sda <=               1'b1;
-							o_sda <= #(2*i_timing) 1'b0;
-						end
-					end
-					else begin //not master
-						o_sda <= 1'b1;
-					end
-				end
-				else begin 
-					o_sda <= cur_byte[8];
-				end
-				
 			end
 		end
 		

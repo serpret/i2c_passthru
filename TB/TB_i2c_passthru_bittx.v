@@ -126,9 +126,13 @@ module tb();
 		test_tx_to_slv6();
 		test_tx_to_slv7();
 		test_tx_to_slv8();
+		test_tx_out_of_rst();
+		
+		//rst_uut();
+		//i_scl = 1'b1;
+		//i_sda = 1'b1;
+		//#10000;
 
-		
-		
 	
 		if( failed) $display(" ! ! !  TEST FAILED ! ! !");
 		else        $display(" Test Passed ");
@@ -181,6 +185,72 @@ module tb();
 		repeat(1) @(posedge i_clk);
 		
 		
+		end
+	endtask
+	
+	//release reset on tx unit, setup inputs as in actual module
+	task test_tx_out_of_rst;
+		realtime start_time;
+		begin
+			$display("--- test_tx_out_of_rst %t ---", $realtime);
+			i_scl = 1'b1;
+			i_sda = 1'b1;
+			
+			i_rx_sda_init_valid = 1;
+			i_rx_sda_init       = 1;
+			i_rx_sda_mid_change = 0;
+			i_rx_sda_final      = 0;
+			rst_uut();
+			#1;
+			if (
+				o_scl       !== 1 ||
+				o_sda       !== 1 ||
+				o_tx_done   !== 0 ||
+				o_violation !== 0
+			) begin
+				$display("    fail 0 %t", $realtime);
+				failed = 1;
+			end
+			@(posedge i_clk) ;
+			
+			i_rx_sda_mid_change = 1;
+
+
+			
+			//wait for sda to fall
+			start_time = $realtime;
+			while( o_sda !== 1'b0 && (time_elapsed( start_time) < NS_TB_TIMEOUT) ) begin
+				if (
+					o_scl       !== 1 ||
+					//o_sda       !== 1 ||
+					o_tx_done   !== 0 ||
+					o_violation !== 0
+				) begin
+					$display("    fail 1 %t", $realtime);
+					failed = 1;
+				end
+				@(posedge i_clk);
+				
+			end
+			
+			i_sda = 1'b0;
+			
+			
+			start_time = $realtime;
+			while( time_elapsed(start_time) < NS_T_LOW_MIN) begin
+				if (
+					o_scl       !== 1 ||
+					o_sda       !== 0 ||
+					o_tx_done   !== 0 ||
+					o_violation !== 0
+				) begin
+					$display("    fail 2 %t", $realtime);
+					failed = 1;
+				end
+				@(posedge i_clk);
+			end
+			
+
 		end
 	endtask
 	

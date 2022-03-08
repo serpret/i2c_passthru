@@ -162,7 +162,8 @@ module i2c_passthru_sda_mismatch #(
 			state <= nxt_state;
 		end
 		else begin
-			state <= ST_MATCH;
+			//state <= ST_MATCH;
+			state <= ST_WAIT;
 		end
 	end
 	

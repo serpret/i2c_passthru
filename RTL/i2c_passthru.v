@@ -40,6 +40,9 @@ module i2c_passthru #(
 	// 8mhz * 1us = 8
 	// set to greater than 8
 	parameter F_REF_T_R       = 15, // t_r rise time max (recommend double)
+	                                // note: there is an extra 8 clock cycle delay
+	                                // before this module registers sda/scl inputs.
+	                                // please add this delay into f_ref_t_r as well.
 	parameter F_REF_T_SU_DAT  =  2, // t_su:dat dat setup time minimum
 	parameter F_REF_T_HI      =511,//t_high clock high period maximum
 	parameter F_REF_T_LOW     = 38, // t_low clock low period minimum 
@@ -119,7 +122,7 @@ module i2c_passthru #(
 	
 	//rxtx ctrl signals
 	wire rxtx_start     ;
-	wire rxtx_slv_is_rx ;
+	wire rxtx_tx_to_mst ;
 	
 	//bitrx in and output signals 
 	wire bitrx_sda_init_valid   ;
@@ -242,7 +245,7 @@ module i2c_passthru #(
 
 		end
 		else begin
-			case( {cha_ismst, rxtx_slv_is_rx})
+			case( {cha_ismst, rxtx_tx_to_mst})
 				2'b00: begin
 					o_cha_scl_prereg = bittx_scl;
 					o_cha_sda_prereg = bittx_sda;
@@ -295,7 +298,7 @@ module i2c_passthru #(
 		//output logic for channel a
 	always @(*) begin
 
-		case( {cha_ismst, rxtx_slv_is_rx})
+		case( {cha_ismst, rxtx_tx_to_mst})
 			2'b00: begin
 				bittx_scl_in  =  cha_scl_fltrd   ;
 				bittx_sda_in  =  cha_sda_fltrd   ;
@@ -447,8 +450,8 @@ module i2c_passthru #(
 		.i_rx_sda_init_valid(bitrx_sda_init_valid ),
 		.i_rx_sda_init      (bitrx_sda_init       ),
 		
-		.o_start            ( rxtx_start          ),
-		.o_slv_is_rx        ( rxtx_slv_is_rx      )
+		.o_start              ( rxtx_start          ),
+		.o_tx_to_mst        ( rxtx_tx_to_mst      )
 	);
 	
 	
@@ -461,7 +464,7 @@ module i2c_passthru #(
 		.i_rstn             ( i_rstn && !disconnect )  ,             
 		.i_f_ref            (i_f_ref                )  ,
 		.i_start_rx         (rxtx_start             ),
-		.i_rx_frm_slv       (rxtx_slv_is_rx         ),
+		.i_rx_frm_slv       (rxtx_tx_to_mst         ),
 		.i_tx_done          (bittx_tx_done          ),
 		.i_scl              (bitrx_scl_in           ),
 		.i_sda              (bitrx_sda_in           ),
@@ -493,7 +496,7 @@ module i2c_passthru #(
 		.i_rstn             ( i_rstn && !disconnect),
 		.i_f_ref            (i_f_ref               ),
 		.i_start_tx         (rxtx_start            ),
-		.i_tx_is_to_mst     (rxtx_slv_is_rx        ),
+		.i_tx_is_to_mst     (rxtx_tx_to_mst        ),
 		.i_rx_sda_init_valid(bitrx_sda_init_valid  ),
 		.i_rx_sda_init      (bitrx_sda_init        ),
 		.i_rx_sda_mid_change(bitrx_sda_mid_change  ),

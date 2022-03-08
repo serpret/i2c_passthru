@@ -445,8 +445,8 @@ module i2c_passthru #(
 		.i_cha_sda          (cha_sda_fltrd        ),	
 		.i_chb_scl          (chb_scl_fltrd        ),
 		.i_chb_sda          (chb_sda_fltrd        ),
-		.i_rx_done          ( rx_done             ),
-		.i_tx_done          ( tx_done             ),
+		.i_rx_done          ( bitrx_rx_done       ),
+		.i_tx_done          ( bittx_tx_done       ),
 		.i_rx_sda_init_valid(bitrx_sda_init_valid ),
 		.i_rx_sda_init      (bitrx_sda_init       ),
 		

@@ -89,14 +89,14 @@ module i2c_passthru_rxtx_ctrl(
 
 	always @(*) begin
 		case( {bit_willbe_ack, read_mode, ack_failed} )
-			000: bit_willbe_slv_rx = 0;
-			001: bit_willbe_slv_rx = 0;
-			010: bit_willbe_slv_rx = 0;
-			011: bit_willbe_slv_rx = 1;
-			100: bit_willbe_slv_rx = 1;
-			101: bit_willbe_slv_rx = 1;
-			110: bit_willbe_slv_rx = 0;
-			111: bit_willbe_slv_rx = 0;
+			3'b000: bit_willbe_slv_rx = 0;
+			3'b001: bit_willbe_slv_rx = 0;
+			3'b010: bit_willbe_slv_rx = 0;
+			3'b011: bit_willbe_slv_rx = 1;
+			3'b100: bit_willbe_slv_rx = 1;
+			3'b101: bit_willbe_slv_rx = 1;
+			3'b110: bit_willbe_slv_rx = 0;
+			3'b111: bit_willbe_slv_rx = 0;
 			default: bit_willbe_slv_rx = 0;
 
 		endcase

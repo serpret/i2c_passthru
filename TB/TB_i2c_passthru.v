@@ -1,5 +1,13 @@
 `timescale 1ns/100ps
 
+`define MON_EVENT_0 2'b00
+`define MON_EVENT_1 2'b01
+`define MON_EVENT_P 2'b10
+`define MON_EVENT_S 2'b11
+
+
+
+
 
 module tb();
 	//parameters
@@ -129,6 +137,16 @@ module tb();
 	wire      drv_chb_sda                   ;
 	wire      drv_chb_idle                  ;
 
+
+	//cha monitor
+			
+		reg mon_cha_en_timing_check              ;
+		reg mon_cha_clr_all                      ;
+		wire [ 31:0]  mon_cha_num_events         ;
+		wire [255:0]  mon_cha_events             ;
+		wire          mon_cha_timing_check_err   ;
+		
+
 	////
 
 	always #160        i_clk            = ~i_clk; //160 ->
@@ -256,8 +274,20 @@ module tb();
 	);
 	
 	
-	
 
+	mon_i2c u_monitor_cha(
+		.i_scl( cha_scl),
+		.i_sda( cha_sda),
+		
+		.i_en_timing_check( mon_cha_en_timing_check),
+		.i_clr_all        ( mon_cha_clr_all        ),
+		
+		.o_num_events      (mon_cha_num_events      ) , 
+		.o_events          (mon_cha_events          ) ,
+		.o_timing_check_err(mon_cha_timing_check_err) 
+	);
+	
+	
 	//handle rise times, fall times, and reference signals for sda
 	
 	//channel A
@@ -323,6 +353,13 @@ module tb();
 
 		init_drv_cha_wrbytes();
 		init_drv_chb_wrbytes();
+		
+		mon_cha_en_timing_check = 0;
+		mon_cha_clr_all         = 0;
+		#1;
+		mon_cha_en_timing_check = 1;
+		mon_cha_clr_all         = 1;
+		
 		#10_000;
 		
 
@@ -337,6 +374,9 @@ module tb();
 		drv_cha_extra_stop_after_byte  = 4'hF    ;
 		drv_cha_extra_start_after_byte = 4'hF    ;
 		
+		drv_cha_wrbyte_0= { 7'h55, 1'b0, 1'b1};
+		drv_cha_wrbyte_1= {       8'h55, 1'b1};
+		
 		
 		drv_chb_start                  = 1'b1    ;
 		drv_chb_timing                 = 32'd5000;
@@ -349,13 +389,19 @@ module tb();
 		drv_chb_extra_stop_after_byte  = 4'hF    ;
 		drv_chb_extra_start_after_byte = 4'hF    ;
 		
+		drv_chb_wrbyte_0= { 7'hFF, 1'b1, 1'b0};
+		drv_chb_wrbyte_1= {       8'hFF, 1'b0};
+		
 		
 		
 		@(posedge drv_cha_idle);
 		
+		//print_i2c_events( mon_cha_num_events, mon_cha_events);
+		
 		#5000;
 		
-		
+		print_i2c_events( mon_cha_num_events, mon_cha_events);
+
 		
 		
 
@@ -521,6 +567,28 @@ module tb();
 			time_elapsed = $realtime - start;
 		end
 	endfunction
+	
+	
+	task print_i2c_events;
+		input [31:0] num_events;
+		input [255:0] events;
+		
+		reg [31:0] idx;
+		begin
+			
+			//$display("num events: %d", num_events);
+			for(idx=0; idx<num_events; idx=idx+1'b1)begin
+				//$write("%d ", idx);
+				//$write("%d", (num_events-idx-1)*2); 
+				case(events[ (num_events-idx-1)*2 +:2])
+					`MON_EVENT_0: $write("0" );
+					`MON_EVENT_1: $write("1" );
+					`MON_EVENT_P: $write("P ");
+					`MON_EVENT_S: $write(" S");
+				endcase
+			end
+		end
+	endtask
 	
 	
 endmodule
@@ -692,26 +760,6 @@ module driver_i2c(
 		end
 	end
 	
-	//bit count and byte count
-	//always @(negedge i_scl) begin
-	//	if( 4'hA == bit_cnt ) //ctrl bit
-	//		bit_cnt <= 4'h1;
-	//		byte_cnt <= byte_cnt + 1'b1;
-	//	else if (4'h9 == bit_cnt) begin
-	//		if(stop_byte || start_byte) begin
-	//			bit_cnt <= bit_cnt + 1'b1;
-	//		end
-	//		else begin
-	//			bit_cnt  <= 4'h1;
-	//			byte_cnt <= byte_cnt + 1'b1;
-	//		end
-	//	end
-	//	else begin
-	//		bit_cnt <= bit_cnt + 1'b1;
-	//	
-	//	end
-	//end
-
 	
 	//byte count and bit count
 	always @( posedge i_scl_sda_chng_ref) begin
@@ -730,41 +778,6 @@ module driver_i2c(
 	end
 	
 
-	
-	
-	
-	
-	////handle cur_byte
-	//always @(negedge i_scl) begin
-	//	if(   //4'h0 == bit_cnt 
-	//	        4'hA == bit_cnt 
-	//		|| (4'h9 == bit_cnt && !(stop_byte || start_byte)) 
-	//	) begin
-	//		case( byte_cnt)
-	//			0  : cur_byte <= i_wrbyte_1 ;
-	//			1  : cur_byte <= i_wrbyte_2 ;
-	//			2  : cur_byte <= i_wrbyte_3 ;
-	//			3  : cur_byte <= i_wrbyte_4 ;
-	//			4  : cur_byte <= i_wrbyte_5 ;
-	//			5  : cur_byte <= i_wrbyte_6 ;
-	//			6  : cur_byte <= i_wrbyte_7 ;
-	//			7  : cur_byte <= i_wrbyte_8 ;
-	//			8  : cur_byte <= i_wrbyte_9 ;
-	//			9  : cur_byte <= i_wrbyte_10;
-	//			10 : cur_byte <= i_wrbyte_11;
-	//			11 : cur_byte <= i_wrbyte_12;
-	//			12 : cur_byte <= i_wrbyte_13;
-	//			13 : cur_byte <= i_wrbyte_14;
-	//			14 : cur_byte <= i_wrbyte_15;
-	//			15 : cur_byte <= cur_byte; //last byte. ignore.
-	//		endcase
-	//	end
-	//	else begin
-	//		cur_byte <= (cur_byte[7:0] << 1);
-	//	end
-	//	
-	//end
-	
 	
 	//handle cur_byte
 	always @( posedge i_scl_sda_chng_ref) begin
@@ -796,28 +809,6 @@ module driver_i2c(
 		
 	end
 	
-	////handle o_sda data transitions 
-	//always @( i_scl_sda_chng_ref) begin
-	//	if( i_sda_violate) begin
-	//		if( i_scl_sda_chng_ref) begin //rising edge of reference scl
-	//			if( 4'hA == bit_cnt && final_byte && !i_dont_stop
-	//			    4'hA == bit_cnt &&
-	//			o_sda <= cur_byte[8];
-	//		end
-	//		else begin // falling edge of reference scl
-	//			o_sda <= ~o_sda;
-	//		end
-	//	end
-	//	else begin
-	//		if( i_scl_sda_chng_ref) begin //rising edge of reference scl
-	//			o_sda <= o_sda; //no change, ignore
-	//		end
-	//		else begin // falling edge of reference scl
-	//			o_sda <= cur_byte[8];
-	//		end
-	//
-	//	end
-	//end
 	
 	//handle o_sda data transitions 
 	always @( i_scl_sda_chng_ref) begin
@@ -899,8 +890,89 @@ module driver_i2c(
 	end
 	
 
+endmodule
+
+
+
+
+
+
+////////////    mon_i2c: i2c testbench monitor. ////////////////////////////////
+//
+//i_en_timing_check = 1 
+//		to enable timing checks (prints error message and outputs o_timing_check_err)
+//
+//i_clr_all = 1 
+//		to clear all outputs and internal states from previous run 
+//		(clears o_num_events, events, and o_timing_check_err)
+//
+//o_num_events is the number of events captured since i_clr_all last was set to 1
+//
+//o_events is the i2c events captured:
+//		last event captured is shifted into the lsb
+//		events are encoded as 2 bits:
+//			MON_EVENT_0
+//			MON_EVENT_1
+//			MON_EVENT_P
+//			MON_EVENT_S
+//
+//		Example: 1 start bit captured,  1 data bit captured with value 0, 1 stop bit captured
+//			o_num_events = 3
+//			o_events = { MON_EVENT_S, MON_EVENT_1, MON_EVENT_P}
+
+
+
+
+module mon_i2c(
+	input i_scl,
+	input i_sda,
+	
+	input i_en_timing_check       ,
+	input i_clr_all               ,
+	
+	output reg [31:0] o_num_events, 
+	output reg [255:0] o_events   ,
+	output reg o_timing_check_err
+);
+	reg psbl_data;
+	
+	always @(posedge i_clr_all) begin
+		o_num_events       = 32'd0;
+		o_events           = {256{1'b0}};
+		o_timing_check_err = 1'b0;
+		psbl_data          = 1'b0;
+	end
+	
+	// event capture logic
+	always @(posedge i_scl) begin
+		psbl_data = 1'b1;
+		
+	end
+	
+	always @(negedge i_scl) begin
+		if( psbl_data) begin
+			o_num_events  = o_num_events + 1'b1;
+			o_events      = o_events << 2;
+			o_events[1:0] = i_sda ? `MON_EVENT_1: `MON_EVENT_0;
+		end
+	end
+	
+	always @( i_sda) begin
+		if(i_scl) begin
+			psbl_data = 1'b0;
+			o_num_events  = o_num_events + 1'b1;
+			o_events      = o_events << 2;
+			o_events[1:0] = i_sda ? `MON_EVENT_P: `MON_EVENT_S;
+		end
+	end
+	
+	//timing check logic
+
 
 endmodule
+	
+	
+	
 
 
 

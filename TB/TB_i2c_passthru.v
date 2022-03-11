@@ -69,82 +69,85 @@ module tb();
 	wire o_bit_violation; 
 	wire o_cha_stuck    ; 
 	wire o_chb_stuck    ;
+	
+	//which channel will be tested as master
+	reg test_cha_mst ;
 		
-	//cha driver signals
+	//master driver signals
 
-	reg       drv_cha_scl_sda_chng_ref      ;  
-	reg       drv_cha_start                 ;  
-	reg [31:0]drv_cha_timing                ;  
-	reg       drv_cha_is_mstr               ;  
-	reg       drv_cha_clock_low_by8         ;  
-	reg       drv_cha_sda_violate           ;  
-	reg       drv_cha_dont_stop             ;  
-	reg       drv_cha_dont_start            ;  
-	reg [3:0] drv_cha_stop_after_byte       ;  
-	reg [3:0] drv_cha_extra_stop_after_byte ;  
-	reg [3:0] drv_cha_extra_start_after_byte;  
-	reg [8:0] drv_cha_wrbyte_0              ;              
-	reg [8:0] drv_cha_wrbyte_1              ;              
-	reg [8:0] drv_cha_wrbyte_2              ;              
-	reg [8:0] drv_cha_wrbyte_3              ;              
-	reg [8:0] drv_cha_wrbyte_4              ;              
-	reg [8:0] drv_cha_wrbyte_5              ;              
-	reg [8:0] drv_cha_wrbyte_6              ;              
-	reg [8:0] drv_cha_wrbyte_7              ;              
-	reg [8:0] drv_cha_wrbyte_8              ;              
-	reg [8:0] drv_cha_wrbyte_9              ;              
-	reg [8:0] drv_cha_wrbyte_10             ;              
-	reg [8:0] drv_cha_wrbyte_11             ;              
-	reg [8:0] drv_cha_wrbyte_12             ;              
-	reg [8:0] drv_cha_wrbyte_13             ;              
-	reg [8:0] drv_cha_wrbyte_14             ;              
-	reg [8:0] drv_cha_wrbyte_15             ;              
-	wire      drv_cha_scl                   ;
-	wire      drv_cha_sda                   ;
-	wire      drv_cha_idle                  ;
+	reg       drv_mst_scl_sda_chng_ref      ;  
+	reg       drv_mst_start                 ;  
+	reg [31:0]drv_mst_timing                ;  
+	reg       drv_mst_is_mstr               ;  
+	reg       drv_mst_clock_low_by8         ;  
+	reg       drv_mst_sda_violate           ;  
+	reg       drv_mst_dont_stop             ;  
+	reg       drv_mst_dont_start            ;  
+	reg [3:0] drv_mst_stop_after_byte       ;  
+	reg [3:0] drv_mst_extra_stop_after_byte ;  
+	reg [3:0] drv_mst_extra_start_after_byte;  
+	reg [8:0] drv_mst_wrbyte_0              ;              
+	reg [8:0] drv_mst_wrbyte_1              ;              
+	reg [8:0] drv_mst_wrbyte_2              ;              
+	reg [8:0] drv_mst_wrbyte_3              ;              
+	reg [8:0] drv_mst_wrbyte_4              ;              
+	reg [8:0] drv_mst_wrbyte_5              ;              
+	reg [8:0] drv_mst_wrbyte_6              ;              
+	reg [8:0] drv_mst_wrbyte_7              ;              
+	reg [8:0] drv_mst_wrbyte_8              ;              
+	reg [8:0] drv_mst_wrbyte_9              ;              
+	reg [8:0] drv_mst_wrbyte_10             ;              
+	reg [8:0] drv_mst_wrbyte_11             ;              
+	reg [8:0] drv_mst_wrbyte_12             ;              
+	reg [8:0] drv_mst_wrbyte_13             ;              
+	reg [8:0] drv_mst_wrbyte_14             ;              
+	reg [8:0] drv_mst_wrbyte_15             ;              
+	wire      drv_mst_scl                   ;
+	wire      drv_mst_sda                   ;
+	wire      drv_mst_idle                  ;
 	
 	
-	//chb driver signals
+	//slaver driver signals
 
-	reg       drv_chb_scl_sda_chng_ref      ;   
-	reg       drv_chb_start                 ;   
-	reg [31:0]drv_chb_timing                ;   
-	reg       drv_chb_is_mstr               ;   
-	reg       drv_chb_clock_low_by8         ;   
-	reg       drv_chb_sda_violate           ;   
-	reg       drv_chb_dont_stop             ;   
-	reg       drv_chb_dont_start            ;   
-	reg [3:0] drv_chb_stop_after_byte       ;   
-	reg [3:0] drv_chb_extra_stop_after_byte ;   
-	reg [3:0] drv_chb_extra_start_after_byte;   
-	reg [8:0] drv_chb_wrbyte_0              ;                
-	reg [8:0] drv_chb_wrbyte_1              ;                
-	reg [8:0] drv_chb_wrbyte_2              ;                
-	reg [8:0] drv_chb_wrbyte_3              ;                
-	reg [8:0] drv_chb_wrbyte_4              ;                
-	reg [8:0] drv_chb_wrbyte_5              ;                
-	reg [8:0] drv_chb_wrbyte_6              ;                
-	reg [8:0] drv_chb_wrbyte_7              ;                
-	reg [8:0] drv_chb_wrbyte_8              ;                
-	reg [8:0] drv_chb_wrbyte_9              ;                
-	reg [8:0] drv_chb_wrbyte_10             ;                
-	reg [8:0] drv_chb_wrbyte_11             ;                
-	reg [8:0] drv_chb_wrbyte_12             ;                
-	reg [8:0] drv_chb_wrbyte_13             ;                
-	reg [8:0] drv_chb_wrbyte_14             ;                
-	reg [8:0] drv_chb_wrbyte_15             ;                
-	wire      drv_chb_scl                   ;
-	wire      drv_chb_sda                   ;
-	wire      drv_chb_idle                  ;
+	reg       drv_slv_scl_sda_chng_ref      ;   
+	reg       drv_slv_start                 ;   
+	reg [31:0]drv_slv_timing                ;   
+	reg       drv_slv_is_mstr               ;   
+	reg       drv_slv_clock_low_by8         ;   
+	reg       drv_slv_sda_violate           ;   
+	reg       drv_slv_dont_stop             ;   
+	reg       drv_slv_dont_start            ;   
+	reg [3:0] drv_slv_stop_after_byte       ;   
+	reg [3:0] drv_slv_extra_stop_after_byte ;   
+	reg [3:0] drv_slv_extra_start_after_byte;   
+	reg [8:0] drv_slv_wrbyte_0              ;                
+	reg [8:0] drv_slv_wrbyte_1              ;                
+	reg [8:0] drv_slv_wrbyte_2              ;                
+	reg [8:0] drv_slv_wrbyte_3              ;                
+	reg [8:0] drv_slv_wrbyte_4              ;                
+	reg [8:0] drv_slv_wrbyte_5              ;                
+	reg [8:0] drv_slv_wrbyte_6              ;                
+	reg [8:0] drv_slv_wrbyte_7              ;                
+	reg [8:0] drv_slv_wrbyte_8              ;                
+	reg [8:0] drv_slv_wrbyte_9              ;                
+	reg [8:0] drv_slv_wrbyte_10             ;                
+	reg [8:0] drv_slv_wrbyte_11             ;                
+	reg [8:0] drv_slv_wrbyte_12             ;                
+	reg [8:0] drv_slv_wrbyte_13             ;                
+	reg [8:0] drv_slv_wrbyte_14             ;                
+	reg [8:0] drv_slv_wrbyte_15             ;                
+	wire      drv_slv_scl                   ;
+	wire      drv_slv_sda                   ;
+	wire      drv_slv_idle                  ;
 
 
-	//cha monitor
+	//master monitor
 			
-		reg mon_cha_en_timing_check              ;
-		reg mon_cha_clr_all                      ;
-		wire [ 31:0]  mon_cha_num_events         ;
-		wire [255:0]  mon_cha_events             ;
-		wire          mon_cha_timing_check_err   ;
+		reg mon_mst_en_timing_check              ;
+		reg mon_mst_clr_all                      ;
+		wire [ 31:0]  mon_mst_num_events         ;
+		wire [255:0]  mon_mst_events             ;
+		wire          mon_mst_timing_check_err   ;
 		
 
 	////
@@ -199,147 +202,199 @@ module tb();
 	);
 	
 	
-	driver_i2c u_driver_i2c_cha(
+	driver_i2c u_driver_i2c_mst(
 
-		.i_scl                   (cha_scl                       ),
-		.i_sda                   (cha_sda                       ),
-		.i_scl_sda_chng_ref      (drv_cha_scl_sda_chng_ref      ),
-		.i_start                 (drv_cha_start                 ),    
-		.i_timing                (drv_cha_timing                ),   
-		.i_is_mstr               (drv_cha_is_mstr               ),  
-		.i_clock_low_by8         (drv_cha_clock_low_by8         ), 
-		.i_sda_violate           (drv_cha_sda_violate           ), 
-		.i_dont_stop             (drv_cha_dont_stop             ),
-		.i_dont_start            (drv_cha_dont_start            ),
-		.i_stop_after_byte       (drv_cha_stop_after_byte       ), 
-		.i_extra_stop_after_byte (drv_cha_extra_stop_after_byte ),  
-		.i_extra_start_after_byte(drv_cha_extra_start_after_byte), 
-		.i_wrbyte_0              (drv_cha_wrbyte_0              ),
-		.i_wrbyte_1              (drv_cha_wrbyte_1              ),
-		.i_wrbyte_2              (drv_cha_wrbyte_2              ),
-		.i_wrbyte_3              (drv_cha_wrbyte_3              ),
-		.i_wrbyte_4              (drv_cha_wrbyte_4              ),
-		.i_wrbyte_5              (drv_cha_wrbyte_5              ),
-		.i_wrbyte_6              (drv_cha_wrbyte_6              ),
-		.i_wrbyte_7              (drv_cha_wrbyte_7              ),
-		.i_wrbyte_8              (drv_cha_wrbyte_8              ),
-		.i_wrbyte_9              (drv_cha_wrbyte_9              ),
-		.i_wrbyte_10             (drv_cha_wrbyte_10             ),
-		.i_wrbyte_11             (drv_cha_wrbyte_11             ),
-		.i_wrbyte_12             (drv_cha_wrbyte_12             ),
-		.i_wrbyte_13             (drv_cha_wrbyte_13             ),
-		.i_wrbyte_14             (drv_cha_wrbyte_14             ),
-		.i_wrbyte_15             (drv_cha_wrbyte_15             ),
-		.o_scl                   (drv_cha_scl                   ),
-		.o_sda                   (drv_cha_sda                   ),
-		.o_idle                  (drv_cha_idle                  )
+		.i_scl                   (test_cha_mst ? cha_scl : chb_scl ),
+		.i_sda                   (test_cha_mst ? cha_sda : chb_sda ),
+		.i_scl_sda_chng_ref      (drv_mst_scl_sda_chng_ref      ),
+		.i_start                 (drv_mst_start                 ),    
+		.i_timing                (drv_mst_timing                ),   
+		.i_is_mstr               (drv_mst_is_mstr               ),  
+		.i_clock_low_by8         (drv_mst_clock_low_by8         ), 
+		.i_sda_violate           (drv_mst_sda_violate           ), 
+		.i_dont_stop             (drv_mst_dont_stop             ),
+		.i_dont_start            (drv_mst_dont_start            ),
+		.i_stop_after_byte       (drv_mst_stop_after_byte       ), 
+		.i_extra_stop_after_byte (drv_mst_extra_stop_after_byte ),  
+		.i_extra_start_after_byte(drv_mst_extra_start_after_byte), 
+		.i_wrbyte_0              (drv_mst_wrbyte_0              ),
+		.i_wrbyte_1              (drv_mst_wrbyte_1              ),
+		.i_wrbyte_2              (drv_mst_wrbyte_2              ),
+		.i_wrbyte_3              (drv_mst_wrbyte_3              ),
+		.i_wrbyte_4              (drv_mst_wrbyte_4              ),
+		.i_wrbyte_5              (drv_mst_wrbyte_5              ),
+		.i_wrbyte_6              (drv_mst_wrbyte_6              ),
+		.i_wrbyte_7              (drv_mst_wrbyte_7              ),
+		.i_wrbyte_8              (drv_mst_wrbyte_8              ),
+		.i_wrbyte_9              (drv_mst_wrbyte_9              ),
+		.i_wrbyte_10             (drv_mst_wrbyte_10             ),
+		.i_wrbyte_11             (drv_mst_wrbyte_11             ),
+		.i_wrbyte_12             (drv_mst_wrbyte_12             ),
+		.i_wrbyte_13             (drv_mst_wrbyte_13             ),
+		.i_wrbyte_14             (drv_mst_wrbyte_14             ),
+		.i_wrbyte_15             (drv_mst_wrbyte_15             ),
+		.o_scl                   (drv_mst_scl                   ),
+		.o_sda                   (drv_mst_sda                   ),
+		.o_idle                  (drv_mst_idle                  )
 	);
 	
 	
 	
-	driver_i2c u_driver_i2c_chb(
+	driver_i2c u_driver_i2c_slv(
 
-		.i_scl                   (chb_scl                       ),
-		.i_sda                   (chb_sda                       ),
-		.i_scl_sda_chng_ref      (drv_chb_scl_sda_chng_ref      ),
-		.i_start                 (drv_chb_start                 ),    
-		.i_timing                (drv_chb_timing                ),   
-		.i_is_mstr               (drv_chb_is_mstr               ),  
-		.i_clock_low_by8         (drv_chb_clock_low_by8         ), 
-		.i_sda_violate           (drv_chb_sda_violate           ), 
-		.i_dont_stop             (drv_chb_dont_stop             ),
-		.i_dont_start            (drv_chb_dont_start            ),
-		.i_stop_after_byte       (drv_chb_stop_after_byte       ), 
-		.i_extra_stop_after_byte (drv_chb_extra_stop_after_byte ),  
-		.i_extra_start_after_byte(drv_chb_extra_start_after_byte), 
-		.i_wrbyte_0              (drv_chb_wrbyte_0              ),
-		.i_wrbyte_1              (drv_chb_wrbyte_1              ),
-		.i_wrbyte_2              (drv_chb_wrbyte_2              ),
-		.i_wrbyte_3              (drv_chb_wrbyte_3              ),
-		.i_wrbyte_4              (drv_chb_wrbyte_4              ),
-		.i_wrbyte_5              (drv_chb_wrbyte_5              ),
-		.i_wrbyte_6              (drv_chb_wrbyte_6              ),
-		.i_wrbyte_7              (drv_chb_wrbyte_7              ),
-		.i_wrbyte_8              (drv_chb_wrbyte_8              ),
-		.i_wrbyte_9              (drv_chb_wrbyte_9              ),
-		.i_wrbyte_10             (drv_chb_wrbyte_10             ),
-		.i_wrbyte_11             (drv_chb_wrbyte_11             ),
-		.i_wrbyte_12             (drv_chb_wrbyte_12             ),
-		.i_wrbyte_13             (drv_chb_wrbyte_13             ),
-		.i_wrbyte_14             (drv_chb_wrbyte_14             ),
-		.i_wrbyte_15             (drv_chb_wrbyte_15             ),
-		.o_scl                   (drv_chb_scl                   ),
-		.o_sda                   (drv_chb_sda                   ),
-		.o_idle                  (drv_chb_idle                  )
+		.i_scl                   (test_cha_mst ? chb_scl : cha_scl ),
+		.i_sda                   (test_cha_mst ? chb_sda : cha_sda ),
+		.i_scl_sda_chng_ref      (drv_slv_scl_sda_chng_ref      ),
+		.i_start                 (drv_slv_start                 ),    
+		.i_timing                (drv_slv_timing                ),   
+		.i_is_mstr               (drv_slv_is_mstr               ),  
+		.i_clock_low_by8         (drv_slv_clock_low_by8         ), 
+		.i_sda_violate           (drv_slv_sda_violate           ), 
+		.i_dont_stop             (drv_slv_dont_stop             ),
+		.i_dont_start            (drv_slv_dont_start            ),
+		.i_stop_after_byte       (drv_slv_stop_after_byte       ), 
+		.i_extra_stop_after_byte (drv_slv_extra_stop_after_byte ),  
+		.i_extra_start_after_byte(drv_slv_extra_start_after_byte), 
+		.i_wrbyte_0              (drv_slv_wrbyte_0              ),
+		.i_wrbyte_1              (drv_slv_wrbyte_1              ),
+		.i_wrbyte_2              (drv_slv_wrbyte_2              ),
+		.i_wrbyte_3              (drv_slv_wrbyte_3              ),
+		.i_wrbyte_4              (drv_slv_wrbyte_4              ),
+		.i_wrbyte_5              (drv_slv_wrbyte_5              ),
+		.i_wrbyte_6              (drv_slv_wrbyte_6              ),
+		.i_wrbyte_7              (drv_slv_wrbyte_7              ),
+		.i_wrbyte_8              (drv_slv_wrbyte_8              ),
+		.i_wrbyte_9              (drv_slv_wrbyte_9              ),
+		.i_wrbyte_10             (drv_slv_wrbyte_10             ),
+		.i_wrbyte_11             (drv_slv_wrbyte_11             ),
+		.i_wrbyte_12             (drv_slv_wrbyte_12             ),
+		.i_wrbyte_13             (drv_slv_wrbyte_13             ),
+		.i_wrbyte_14             (drv_slv_wrbyte_14             ),
+		.i_wrbyte_15             (drv_slv_wrbyte_15             ),
+		.o_scl                   (drv_slv_scl                   ),
+		.o_sda                   (drv_slv_sda                   ),
+		.o_idle                  (drv_slv_idle                  )
 	);
 	
 	
 
-	mon_i2c u_monitor_cha(
-		.i_scl( cha_scl),
-		.i_sda( cha_sda),
+	mon_i2c u_monitor_mst(
+		.i_scl( test_cha_mst ? cha_scl : chb_scl),
+		.i_sda( test_cha_mst ? cha_sda : chb_sda),
 		
-		.i_en_timing_check( mon_cha_en_timing_check),
-		.i_clr_all        ( mon_cha_clr_all        ),
+		.i_en_timing_check( mon_mst_en_timing_check),
+		.i_clr_all        ( mon_mst_clr_all        ),
 		
-		.o_num_events      (mon_cha_num_events      ) , 
-		.o_events          (mon_cha_events          ) ,
-		.o_timing_check_err(mon_cha_timing_check_err) 
+		.i_t_low          ( 4700                   ),
+		.i_t_su           (  250                   ),
+		
+		.o_num_events      (mon_mst_num_events      ), 
+		.o_events          (mon_mst_events          ),
+		.o_timing_check_err(mon_mst_timing_check_err)
 	);
 	
 	
-	//handle rise times, fall times, and reference signals for sda
-	
+
+	//master/slave channela/channelb switching, opendrain delays, 
+	//and reference signal creation for drivers
 	//channel A
-	always @( o_cha_scl, drv_cha_scl) begin
-		//if( !cha_chb_switch) begin
-			if( o_cha_scl & drv_cha_scl) cha_scl <= #time_rise 1'b1;
+	//always @( o_cha_scl, drv_mst_scl, drv_slv_scl) begin
+	always @(*) begin
+		if( test_cha_mst) begin
+			if( o_cha_scl & drv_mst_scl) cha_scl <= #time_rise 1'b1;
 			else                         cha_scl <= #time_fall 1'b0;
-		//end
-		//else begin
-		//
-		//
-		//end
+		end
+		else begin
+			if( o_cha_scl & drv_slv_scl) cha_scl <= #time_rise 1'b1;
+			else                         cha_scl <= #time_fall 1'b0;
+		end
 	end
 	
-	always @( o_cha_scl, drv_cha_scl) begin
-		if( o_cha_scl & drv_cha_scl) drv_cha_scl_sda_chng_ref <= #(time_sda_ref_rise) 1'b1;
-		else                         drv_cha_scl_sda_chng_ref <= #(time_sda_ref_fall) 1'b0;
+	//always @( o_cha_scl, o_chb_scl, drv_mst_scl) begin
+	always @(*) begin
+		if( test_cha_mst) begin
+			if( o_cha_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <= #(time_sda_ref_rise) 1'b1;
+			else                         drv_mst_scl_sda_chng_ref <= #(time_sda_ref_fall) 1'b0;
+		end
+		else begin
+			if( o_chb_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <= #(time_sda_ref_rise) 1'b1;
+			else                         drv_mst_scl_sda_chng_ref <= #(time_sda_ref_fall) 1'b0;
+		end
 	end
 	
 
-	always @( drv_cha_sda ) begin
-		if( o_cha_sda & drv_cha_sda) cha_sda = 1'b1;
-		else                         cha_sda = 1'b0;
+	//always @( drv_mst_sda, drv_slv_sda ) begin
+	always @(*) begin
+		if( test_cha_mst) begin
+			if( o_cha_sda & drv_mst_sda) cha_sda = 1'b1;
+			else                         cha_sda = 1'b0;
+		end
+		else begin
+			if( o_cha_sda & drv_slv_sda) cha_sda = 1'b1;
+			else                         cha_sda = 1'b0;
+		end
 	end
 	
-	always @( o_cha_sda) begin
-		if( o_cha_sda & drv_cha_sda) cha_sda <= #time_rise 1'b1;
-		else                         cha_sda <= #time_fall 1'b0;
-	end
+	//always @( o_cha_sda) begin
+	//	if( test_cha_mst) begin
+	//		if( o_cha_sda & drv_mst_sda) cha_sda <= #time_rise 1'b1;
+	//		else                         cha_sda <= #time_fall 1'b0;
+	//	end
+	//	else begin
+	//		if( o_cha_sda & drv_mst_sda) cha_sda <= #time_rise 1'b1;
+	//		else                         cha_sda <= #time_fall 1'b0;
+	//	end
+	//end
 	
 	
 	//channel B
-	always @( o_chb_scl, drv_chb_scl) begin
-		if( o_chb_scl & drv_chb_scl) chb_scl <= #time_rise 1'b1;
-		else                         chb_scl <= #time_fall 1'b0;
+	//always @( o_chb_scl, drv_mst_scl, drv_slv_scl) begin
+	always @(*) begin
+		if( test_cha_mst) begin
+			if( o_chb_scl & drv_slv_scl) chb_scl <= #time_rise 1'b1;
+			else                         chb_scl <= #time_fall 1'b0;
+		end
+		else begin
+			if( o_chb_scl & drv_mst_scl) chb_scl <= #time_rise 1'b1;
+			else                         chb_scl <= #time_fall 1'b0;
+		end
 	end
 	
-	always @( o_chb_scl, drv_chb_scl) begin
-		if( o_chb_scl & drv_chb_scl) drv_chb_scl_sda_chng_ref <= #(time_sda_ref_rise) 1'b1;
-		else                         drv_chb_scl_sda_chng_ref <= #(time_sda_ref_fall) 1'b0;
+	//always @( o_chb_scl, drv_mst_scl, drv_slv_scl) begin
+	always @(*) begin
+		if( test_cha_mst) begin
+			if( o_chb_scl & drv_slv_scl) drv_slv_scl_sda_chng_ref <= #(time_sda_ref_rise) 1'b1;
+			else                         drv_slv_scl_sda_chng_ref <= #(time_sda_ref_fall) 1'b0;
+		end
+		else begin
+			if( o_cha_scl & drv_slv_scl) drv_slv_scl_sda_chng_ref <= #(time_sda_ref_rise) 1'b1;
+			else                         drv_slv_scl_sda_chng_ref <= #(time_sda_ref_fall) 1'b0;
+		end
 	end
 	
 
-	always @( drv_chb_sda ) begin
-		if( o_cha_sda & drv_cha_sda) cha_sda = 1'b1;
-		else                         cha_sda = 1'b0;
+	//always @( drv_mst_sda, drv_mst_scl, drv_slv_sda ) begin
+	always @(*) begin
+		if( test_cha_mst) begin
+			if( o_chb_sda & drv_slv_sda) chb_sda = 1'b1;
+			else                         chb_sda = 1'b0;
+		end
+		else begin
+			if( o_chb_sda & drv_mst_sda) chb_sda = 1'b1;
+			else                         chb_sda = 1'b0;
+		end
 	end
 	
-	always @( o_chb_sda) begin
-		if( o_chb_sda & drv_chb_sda) chb_sda <= #time_rise 1'b1;
-		else                         chb_sda <= #time_fall 1'b0;
-	end
+	//always @( o_chb_sda) begin
+	//	if( test_cha_mst) begin
+	//		if( o_chb_sda & drv_slv_sda) chb_sda <= #time_rise 1'b1;
+	//		else                         chb_sda <= #time_fall 1'b0;
+	//	end
+	//	else begin
+	//		if( o_chb_sda & drv_slv_sda) chb_sda <= #time_rise 1'b1;
+	//		else                         chb_sda <= #time_fall 1'b0;
+	//	end
+	//end
 	
 	
 
@@ -351,56 +406,57 @@ module tb();
 		rst_uut();
 		
 
-		init_drv_cha_wrbytes();
-		init_drv_chb_wrbytes();
+		init_drv_mst_wrbytes();
+		init_drv_slv_wrbytes();
 		
-		mon_cha_en_timing_check = 0;
-		mon_cha_clr_all         = 0;
+		mon_mst_en_timing_check = 0;
+		mon_mst_clr_all         = 0;
 		#1;
-		mon_cha_en_timing_check = 1;
-		mon_cha_clr_all         = 1;
+		mon_mst_en_timing_check = 1;
+		mon_mst_clr_all         = 1;
 		
+		test_cha_mst = 1;
 		#10_000;
 		
 
-		drv_cha_start                  = 1'b1    ;
-		drv_cha_timing                 = 32'd5000;
-		drv_cha_is_mstr                = 1'b1    ;
-		drv_cha_clock_low_by8          = 1'b0    ;
-		drv_cha_sda_violate            = 1'b0    ;
-		drv_cha_dont_stop              = 1'b0    ;
-		drv_cha_dont_start             = 1'b0    ;
-		drv_cha_stop_after_byte        = 4'b1    ;
-		drv_cha_extra_stop_after_byte  = 4'hF    ;
-		drv_cha_extra_start_after_byte = 4'hF    ;
+		drv_mst_start                  = 1'b1    ;
+		drv_mst_timing                 = 32'd5000;
+		drv_mst_is_mstr                = 1'b1    ;
+		drv_mst_clock_low_by8          = 1'b0    ;
+		drv_mst_sda_violate            = 1'b0    ;
+		drv_mst_dont_stop              = 1'b0    ;
+		drv_mst_dont_start             = 1'b0    ;
+		drv_mst_stop_after_byte        = 4'b1    ;
+		drv_mst_extra_stop_after_byte  = 4'hF    ;
+		drv_mst_extra_start_after_byte = 4'hF    ;
 		
-		drv_cha_wrbyte_0= { 7'h55, 1'b0, 1'b1};
-		drv_cha_wrbyte_1= {       8'h55, 1'b1};
-		
-		
-		drv_chb_start                  = 1'b1    ;
-		drv_chb_timing                 = 32'd5000;
-		drv_chb_is_mstr                = 1'b0    ;
-		drv_chb_clock_low_by8          = 1'b0    ;
-		drv_chb_sda_violate            = 1'b0    ;
-		drv_chb_dont_stop              = 1'b0    ;
-		drv_chb_dont_start             = 1'b0    ;
-		drv_chb_stop_after_byte        = 4'b1    ;
-		drv_chb_extra_stop_after_byte  = 4'hF    ;
-		drv_chb_extra_start_after_byte = 4'hF    ;
-		
-		drv_chb_wrbyte_0= { 7'hFF, 1'b1, 1'b0};
-		drv_chb_wrbyte_1= {       8'hFF, 1'b0};
+		drv_mst_wrbyte_0= { 7'h55, 1'b0, 1'b1};
+		drv_mst_wrbyte_1= {       8'h55, 1'b1};
 		
 		
+		drv_slv_start                  = 1'b1    ;
+		drv_slv_timing                 = 32'd5000;
+		drv_slv_is_mstr                = 1'b0    ;
+		drv_slv_clock_low_by8          = 1'b0    ;
+		drv_slv_sda_violate            = 1'b0    ;
+		drv_slv_dont_stop              = 1'b0    ;
+		drv_slv_dont_start             = 1'b0    ;
+		drv_slv_stop_after_byte        = 4'b1    ;
+		drv_slv_extra_stop_after_byte  = 4'hF    ;
+		drv_slv_extra_start_after_byte = 4'hF    ;
 		
-		@(posedge drv_cha_idle);
+		drv_slv_wrbyte_0= { 7'hFF, 1'b1, 1'b0};
+		drv_slv_wrbyte_1= {       8'hFF, 1'b0};
 		
-		//print_i2c_events( mon_cha_num_events, mon_cha_events);
+		
+		
+		@(posedge drv_mst_idle);
+		
+		//print_i2c_events( mon_mst_num_events, mon_mst_events);
 		
 		#5000;
 		
-		print_i2c_events( mon_cha_num_events, mon_cha_events);
+		print_i2c_events( mon_mst_num_events, mon_mst_events);
 
 		
 		
@@ -437,8 +493,8 @@ module tb();
 			chb_scl       = 1;
 			chb_sda       = 1;
 			
-			drv_cha_scl_sda_chng_ref = 1;
-			drv_chb_scl_sda_chng_ref = 1;
+			drv_mst_scl_sda_chng_ref = 1;
+			drv_slv_scl_sda_chng_ref = 1;
 			
 			time_rise         = 32'h0000_0000;
 			time_fall         = 32'h0000_0000;
@@ -448,8 +504,8 @@ module tb();
 			
 			
 			
-			init_drv_cha();
-			init_drv_chb();
+			init_drv_mst();
+			init_drv_slv();
 			#1;
 			
 			
@@ -457,87 +513,87 @@ module tb();
 	endtask
 	
 	
-	task init_drv_cha;
+	task init_drv_mst;
 		begin
-			drv_cha_scl_sda_chng_ref      = 0;
-			drv_cha_start                 = 0;
-			drv_cha_timing                = 32'd5000; //ns
-			drv_cha_is_mstr               = 0;
-			drv_cha_clock_low_by8         = 0;
-			drv_cha_sda_violate           = 0;
-			drv_cha_dont_stop             = 0;
-			drv_cha_dont_start            = 0;
-			drv_cha_stop_after_byte       = 0;
-			drv_cha_extra_stop_after_byte  = 4'hF;
-			drv_cha_extra_start_after_byte = 4'hF;
-			init_drv_cha_wrbytes();
+			drv_mst_scl_sda_chng_ref      = 0;
+			drv_mst_start                 = 0;
+			drv_mst_timing                = 32'd5000; //ns
+			drv_mst_is_mstr               = 0;
+			drv_mst_clock_low_by8         = 0;
+			drv_mst_sda_violate           = 0;
+			drv_mst_dont_stop             = 0;
+			drv_mst_dont_start            = 0;
+			drv_mst_stop_after_byte       = 0;
+			drv_mst_extra_stop_after_byte  = 4'hF;
+			drv_mst_extra_start_after_byte = 4'hF;
+			init_drv_mst_wrbytes();
 
 			
 		end
 	endtask
 	
 	
-	task init_drv_chb;
+	task init_drv_slv;
 		begin
-			drv_chb_scl_sda_chng_ref      = 0;
-			drv_chb_start                 = 0;
-			drv_chb_timing                = 32'd5000; //ns
-			drv_chb_is_mstr               = 0;
-			drv_chb_clock_low_by8         = 0;
-			drv_chb_sda_violate           = 0;
-			drv_chb_dont_stop             = 0;
-			drv_chb_dont_start            = 0;
-			drv_chb_stop_after_byte       = 0;
-			drv_chb_extra_stop_after_byte  = 4'hF;
-			drv_chb_extra_start_after_byte = 4'hF;
-			init_drv_chb_wrbytes();
+			drv_slv_scl_sda_chng_ref      = 0;
+			drv_slv_start                 = 0;
+			drv_slv_timing                = 32'd5000; //ns
+			drv_slv_is_mstr               = 0;
+			drv_slv_clock_low_by8         = 0;
+			drv_slv_sda_violate           = 0;
+			drv_slv_dont_stop             = 0;
+			drv_slv_dont_start            = 0;
+			drv_slv_stop_after_byte       = 0;
+			drv_slv_extra_stop_after_byte  = 4'hF;
+			drv_slv_extra_start_after_byte = 4'hF;
+			init_drv_slv_wrbytes();
 
 		end
 	endtask
 	
 	
-	task init_drv_cha_wrbytes;
+	task init_drv_mst_wrbytes;
 		begin
-			drv_cha_wrbyte_0  = 9'h1FF;
-			drv_cha_wrbyte_1  = 9'h1FF;
-			drv_cha_wrbyte_2  = 9'h1FF;
-			drv_cha_wrbyte_3  = 9'h1FF;
-			drv_cha_wrbyte_4  = 9'h1FF;
-			drv_cha_wrbyte_5  = 9'h1FF;
-			drv_cha_wrbyte_6  = 9'h1FF;
-			drv_cha_wrbyte_7  = 9'h1FF;
-			drv_cha_wrbyte_8  = 9'h1FF;
-			drv_cha_wrbyte_9  = 9'h1FF;
-			drv_cha_wrbyte_10 = 9'h1FF;
-			drv_cha_wrbyte_11 = 9'h1FF;
-			drv_cha_wrbyte_12 = 9'h1FF;
-			drv_cha_wrbyte_13 = 9'h1FF;
-			drv_cha_wrbyte_14 = 9'h1FF;
-			drv_cha_wrbyte_15 = 9'h1FF;
+			drv_mst_wrbyte_0  = 9'h1FF;
+			drv_mst_wrbyte_1  = 9'h1FF;
+			drv_mst_wrbyte_2  = 9'h1FF;
+			drv_mst_wrbyte_3  = 9'h1FF;
+			drv_mst_wrbyte_4  = 9'h1FF;
+			drv_mst_wrbyte_5  = 9'h1FF;
+			drv_mst_wrbyte_6  = 9'h1FF;
+			drv_mst_wrbyte_7  = 9'h1FF;
+			drv_mst_wrbyte_8  = 9'h1FF;
+			drv_mst_wrbyte_9  = 9'h1FF;
+			drv_mst_wrbyte_10 = 9'h1FF;
+			drv_mst_wrbyte_11 = 9'h1FF;
+			drv_mst_wrbyte_12 = 9'h1FF;
+			drv_mst_wrbyte_13 = 9'h1FF;
+			drv_mst_wrbyte_14 = 9'h1FF;
+			drv_mst_wrbyte_15 = 9'h1FF;
 
 		end
 	endtask
 	
 	
 	
-	task init_drv_chb_wrbytes;
+	task init_drv_slv_wrbytes;
 		begin
-			drv_chb_wrbyte_0  = 9'h1FF;
-			drv_chb_wrbyte_1  = 9'h1FF;
-			drv_chb_wrbyte_2  = 9'h1FF;
-			drv_chb_wrbyte_3  = 9'h1FF;
-			drv_chb_wrbyte_4  = 9'h1FF;
-			drv_chb_wrbyte_5  = 9'h1FF;
-			drv_chb_wrbyte_6  = 9'h1FF;
-			drv_chb_wrbyte_7  = 9'h1FF;
-			drv_chb_wrbyte_8  = 9'h1FF;
-			drv_chb_wrbyte_9  = 9'h1FF;
-			drv_chb_wrbyte_10 = 9'h1FF;
-			drv_chb_wrbyte_11 = 9'h1FF;
-			drv_chb_wrbyte_12 = 9'h1FF;
-			drv_chb_wrbyte_13 = 9'h1FF;
-			drv_chb_wrbyte_14 = 9'h1FF;
-			drv_chb_wrbyte_15 = 9'h1FF;
+			drv_slv_wrbyte_0  = 9'h1FF;
+			drv_slv_wrbyte_1  = 9'h1FF;
+			drv_slv_wrbyte_2  = 9'h1FF;
+			drv_slv_wrbyte_3  = 9'h1FF;
+			drv_slv_wrbyte_4  = 9'h1FF;
+			drv_slv_wrbyte_5  = 9'h1FF;
+			drv_slv_wrbyte_6  = 9'h1FF;
+			drv_slv_wrbyte_7  = 9'h1FF;
+			drv_slv_wrbyte_8  = 9'h1FF;
+			drv_slv_wrbyte_9  = 9'h1FF;
+			drv_slv_wrbyte_10 = 9'h1FF;
+			drv_slv_wrbyte_11 = 9'h1FF;
+			drv_slv_wrbyte_12 = 9'h1FF;
+			drv_slv_wrbyte_13 = 9'h1FF;
+			drv_slv_wrbyte_14 = 9'h1FF;
+			drv_slv_wrbyte_15 = 9'h1FF;
 
 		end
 	endtask
@@ -818,10 +874,10 @@ module driver_i2c(
 					if( nxt_bit_ctrl ) begin //control event bit
 						if( i_is_mstr) begin
 							if(      final_byte) begin
-		
-								o_sda <= #i_timing 1'b1;
-								
-								o_idle <= #(2*i_timing) 1'b1;
+								//o_sda <= #i_timing 1'b1;
+								//o_idle <= #(2*i_timing) 1'b1;
+								o_sda <= #(2*i_timing) 1'b1;
+								o_idle <= #(3*i_timing) 1'b1;
 							end
 							else if ( stop_byte && start_byte) begin
 								
@@ -906,6 +962,16 @@ endmodule
 //		to clear all outputs and internal states from previous run 
 //		(clears o_num_events, events, and o_timing_check_err)
 //
+//i_t_low 
+//i_t_su  
+//		timing values for timing checks.
+//		i_t_low is the t_low minimum time for smbus/i2c.  
+//			This value is also used as t_high, t_buf, t_su_sto, t_hd_sta, and t_su_sta
+//		i_t_su is the t_su_dat minimum time for smbus/i2c.
+
+
+
+
 //o_num_events is the number of events captured since i_clr_all last was set to 1
 //
 //o_events is the i2c events captured:
@@ -930,11 +996,18 @@ module mon_i2c(
 	input i_en_timing_check       ,
 	input i_clr_all               ,
 	
+	input [63:0] i_t_low        ,
+	input [63:0] i_t_su         ,
+	//input realtime i_t_low        , //error
+	//input realtime i_t_su         ,
+	
 	output reg [31:0] o_num_events, 
 	output reg [255:0] o_events   ,
 	output reg o_timing_check_err
 );
 	reg psbl_data;
+	realtime t_low_start;
+	realtime t_su_start;
 	
 	always @(posedge i_clr_all) begin
 		o_num_events       = 32'd0;
@@ -967,7 +1040,53 @@ module mon_i2c(
 	end
 	
 	//timing check logic
+	always @(posedge i_scl) begin
+		if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation();
+		if( time_elapsed( t_su_start ) < i_t_low) task_t_su_violation();
+	
+		t_low_start = $realtime;
+	end
+	
+	always @(negedge i_scl) begin
+		if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation();
+	
+		t_low_start = $realtime;
+	end
+	
+	always @(i_sda) begin
+		if( i_scl) begin
+			if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation();
+	
+			t_low_start = $realtime;
+		end
+		else begin
+			t_su_start = $realtime;
+		end
+	end
+	
 
+
+	function realtime time_elapsed;
+		input realtime start;
+		begin
+			time_elapsed = $realtime - start;
+		end
+	endfunction
+	
+	
+	task task_t_low_violation;
+		begin
+			$display("    t_low violation at time %t", $realtime);
+			o_timing_check_err = 1'b1;
+		end
+	endtask
+	
+	task task_t_su_violation;
+		begin
+			$display("    t_su violation at time %t", $realtime);
+			o_timing_check_err = 1'b1;
+		end
+	endtask
 
 endmodule
 	

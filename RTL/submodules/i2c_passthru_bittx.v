@@ -54,25 +54,27 @@ module i2c_passthru_bittx #(
 	
 	//reference frequency for timing 
 	//(periodic signal, rising edges are used for timing)
-	input i_f_ref            ,
+	input i_f_ref             ,
 	
-	input i_start_tx         ,
-	input i_tx_is_to_mst     ,
+	input i_start_tx          ,
+	input i_tx_is_to_mst      ,
 	
-	input i_rx_sda_init_valid,
-	input i_rx_sda_init      ,
-	input i_rx_sda_mid_change,
-	input i_rx_sda_final     ,
-	input i_rx_done          ,
+	input i_rx_sda_init_valid ,
+	input i_rx_sda_init       ,
+	input i_rx_sda_mid_change ,
+	input i_rx_sda_final      ,
+	input i_rx_done           ,
 	
-	input i_scl              ,
-	input i_sda              ,
+	input i_scl               ,
+	input i_sda               ,
 	
 	
 	
-	output reg o_scl         ,
-	output reg o_sda         ,
-	output reg o_tx_done     ,
+	output reg o_scl          ,
+	output reg o_sda          ,
+	
+	output reg o_slv_on_mst_ch,
+	output reg o_tx_done      ,
 	output reg o_violation
 	
 
@@ -121,16 +123,18 @@ module i2c_passthru_bittx #(
 	end
 
 
-	localparam ST_IDLE             = 0  ;
-	localparam ST_SCL0_A           = 1  ;
-	localparam ST_SCL0_B           = 2  ;
-	localparam ST_SCL1_A_TX2MST    = 3  ;
-	localparam ST_SCL1_A_INIT      = 4  ;
-	localparam ST_SCL1_B_WAIT      = 5  ;
-	localparam ST_SCL1_C_MID       = 6  ;
-	localparam ST_SCL1_D_WAIT      = 7  ;
-	localparam ST_SCL1_E_FIN       = 8  ;
-	localparam ST_VIOLATION        = 9  ;
+	localparam ST_IDLE               = 0  ;
+	localparam ST_SCL0_A             = 1  ;
+	localparam ST_SCL0_B             = 2  ;
+	localparam ST_SCL1_A_TX2MST      = 3  ;
+	localparam ST_SCL1_A_INIT        = 4  ;
+	localparam ST_SCL1_B_WAIT        = 5  ;
+	localparam ST_SCL1_C_MID         = 6  ;
+	localparam ST_SCL1_D_WAIT        = 7  ;
+	localparam ST_SCL1_E_FIN         = 8  ;
+	localparam ST_VIOLATION          = 9  ;
+	localparam ST_SLV_ON_MST_CH      = 10 ;
+	localparam ST_IDLE_SLV_ON_MST_CH = 11;
 	
 	//FSM next state and output logic
 	always @(*) begin
@@ -138,6 +142,7 @@ module i2c_passthru_bittx #(
 		nxt_state = state;
 		nxt_tx_to_mst = tx_to_mst;
 		
+		o_slv_on_mst_ch = 0;
 		o_tx_done   = 0;
 		o_violation = 0;
 		
@@ -160,6 +165,18 @@ module i2c_passthru_bittx #(
 			
 			end
 			
+			ST_IDLE_SLV_ON_MST_CH:
+			begin
+				o_tx_done = 1;
+				o_scl = 0;
+				o_sda = i_rx_sda_final;
+				timer_t_low_rst = 1;
+				o_slv_on_mst_ch = 1;
+				
+				nxt_tx_to_mst = i_tx_is_to_mst;
+				if( i_start_tx)                     nxt_state = ST_SCL0_A;
+			end
+			
 			ST_SCL0_A             :
 			begin
 				o_scl = 0;
@@ -174,7 +191,7 @@ module i2c_passthru_bittx #(
 			begin
 				o_scl = 1;
 				o_sda = i_rx_sda_init;
-				timer_t_low_rst = 1'b1;
+				timer_t_low_rst = 1;
 				
 				if(i_scl) begin
 					if ( tx_to_mst)                 nxt_state = ST_SCL1_A_TX2MST;
@@ -187,9 +204,9 @@ module i2c_passthru_bittx #(
 				o_scl = 1;
 				o_sda = i_rx_sda_init;
 				
-				//if( sda_mismatch)                   nxt_state = ST_VIOLATION;
-				//else if ( ~i_scl)                   nxt_state = ST_IDLE;
-				if( ~i_scl)                         nxt_state = ST_IDLE;
+				if( sda_mismatch)                   nxt_state = ST_SLV_ON_MST_CH;
+				else if ( ~i_scl)                   nxt_state = ST_IDLE;
+				//if( ~i_scl)                         nxt_state = ST_IDLE;
 			end
 			
 			ST_SCL1_A_INIT        :
@@ -212,7 +229,7 @@ module i2c_passthru_bittx #(
 			begin
 				o_scl = 1;
 				o_sda = ~i_rx_sda_init;
-				timer_t_low_rst = 1'b1;
+				timer_t_low_rst = 1;
 				
 				if( sda_mismatch || ~i_scl)         nxt_state = ST_VIOLATION;
 				else                                nxt_state = ST_SCL1_C_MID;
@@ -241,7 +258,7 @@ module i2c_passthru_bittx #(
 			begin
 				o_scl = 1;
 				o_sda = i_rx_sda_final;
-				timer_t_low_rst = 1'b1;
+				timer_t_low_rst = 1;
 				
 				if( sda_mismatch || ~i_scl)         nxt_state = ST_VIOLATION;
 				else                                nxt_state = ST_SCL1_E_FIN;
@@ -261,6 +278,14 @@ module i2c_passthru_bittx #(
 			begin
 				o_violation = 1;
 			end
+			
+			ST_SLV_ON_MST_CH      :
+			begin
+				o_slv_on_mst_ch = 1;
+				
+				nxt_state = ST_IDLE_SLV_ON_MST_CH;
+			end
+				
 			
 			default: 
 			begin

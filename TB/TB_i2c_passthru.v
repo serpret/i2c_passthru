@@ -726,6 +726,18 @@ module tb();
 		end
 	endtask
 	
+	function i2c_protocol_test_setaddr;
+		input [1:0] conf;
+		begin
+			case( conf ) 
+				2'b00: i2c_protocol_test_setaddr = 9'b0_0000_0000;
+				2'b01: i2c_protocol_test_setaddr = 9'b1_0101_0101;
+				2'b10: i2c_protocol_test_setaddr = 9'b0_1010_1010;
+				2'b11: i2c_protocol_test_setaddr = 9'b1_1111_1111;
+			endcase
+		end
+	endfunction
+	
 	
 	task i2c_protocol_test;
 	
@@ -734,22 +746,10 @@ module tb();
 		begin
 			current_test_name = "i2c_protocol_test";
 			
-			current_test_pass_config = {1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0, 2'h0, 2'h0};
-			
-			case( current_test_pass_config[0 +:2] ) 
-				2'b00: mst_dat = 9'b0_0000_0000;
-				2'b01: mst_dat = 9'b1_0101_0101;
-				2'b10: mst_dat = 9'b0_1010_1010;
-				2'b11: mst_dat = 9'b1_1111_1111;
-			endcase
-			
-			case( current_test_pass_config[2 +:2] ) 
-				2'b00: slv_dat = 9'b0_0000_0000;
-				2'b01: slv_dat = 9'b1_0101_0101;
-				2'b10: slv_dat = 9'b0_1010_1010;
-				2'b11: slv_dat = 9'b1_1111_1111;
-			endcase
-			
+			//current_test_pass_config = {1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0, 2'h0, 2'h0};
+			current_test_pass_config = 13'b000000000_00_00;
+			mst_dat  = i2c_protocol_test_setaddr( current_test_pass_config[0 +:2]);
+			slv_dat  = i2c_protocol_test_setaddr( current_test_pass_config[2 +:2]);
 			
 			//i2c_protocol_test_pass(0,0,0,0,0,0,0,0,0, 9'h1_55, 9'h0_AA);
 			i2c_protocol_test_pass(
@@ -767,6 +767,7 @@ module tb();
 			);
 
 		end
+
 	endtask
 	
 	
@@ -798,21 +799,21 @@ module tb();
 		input [8:0] mst_dat;
 		input [8:0] slv_dat;
 
+		reg [31:0] expctd_cnt_idle_timeout;
+		reg [31:0] expctd_cnt_bit_violation;
+		reg [31:0] expctd_cnt_cha_stuck; 
+		reg [31:0] expctd_cnt_chb_stuck;
 		begin
 	
 			test_cha_mst = ~en_chb_is_mst;
 			
-	
-			rst_all_mon();
-			if(en_rst_between_tran) begin
-				rst_uut();
-				//#NS_T_BUS_STUCK_MAX;
-				#NS_T_HI_MIN;
-			end
-			
-	
-			init_drv_mst_wrbytes();
-			init_drv_slv_wrbytes();
+			//rst_all_mon();
+			//if(en_rst_between_tran) begin
+			//	rst_uut();
+			//	//#NS_T_BUS_STUCK_MAX;
+			//	//#NS_T_HI_MIN;
+			//	#NS_T_LOW_MAX;
+			//end
 			
 			
 			case( {en_mst_fast, en_mst_time_violations})
@@ -910,6 +911,14 @@ module tb();
 			
 			
 			//---- write address only, no ack ----------------
+			rst_all_mon();
+			if(en_rst_between_tran) begin
+				rst_uut();
+				#NS_T_LOW_MAX;
+			end
+			
+			init_drv_mst_wrbytes();
+			init_drv_slv_wrbytes();
 			
 			drv_mst_stop_after_byte        = 4'b0    ;
 			drv_mst_extra_stop_after_byte  = 4'hF    ;
@@ -930,6 +939,8 @@ module tb();
 			drv_mst_start                  = 1'b1    ;
 			drv_slv_start                  = 1'b1    ;
 			#1;
+			drv_mst_start                  = 1'b0    ;
+			drv_slv_start                  = 1'b0    ;
 			//@(posedge drv_mst_idle);
 			
 			//wait for mst and slv to be idle
@@ -937,23 +948,19 @@ module tb();
 				@(posedge i_clk);
 			end
 			
+			//wait for all lines to release
+			while( !cha_scl || !cha_sda || !chb_scl || !chb_sda) begin
+				@(posedge i_clk);
+			end
 			
+			if(en_no_stops) 
+				#NS_T_HI_MAX;
+			#1;
 			
-			
-			//check_expctd_i2c_events( 
-			//	.num_expctd(32'd11) , 
-			//	.num_actual(mon_mst_num_events), 
-			//	.expctd({
-			//		MON_EVENT_S,
-			//		i2cbyte_to_i2c_event( {mst_dat[8:2], 1'b0, 1'b1} ),
-			//		MON_EVENT_P
-			//	}),
-			//	
-			//	.actual(mon_mst_events) 
-			//);
 			
 			
 			check_expctd_i2c_events( 
+				"write address only, no ack, master side",
 				32'd11 ,                     //	.num_expctd
 				mon_mst_num_events,          //	.num_actual
 				{                            //	.expctd({
@@ -964,16 +971,149 @@ module tb();
 				mon_mst_events               //	.actual
 			);                               //);
 			
-
+			
+			check_expctd_i2c_events( 
+				"write address only, no ack, slave side",
+				32'd11 ,                     //	.num_expctd
+				mon_slv_num_events,          //	.num_actual
+				{                            //	.expctd({
+					`MON_EVENT_S,                                           
+					i2cbyte_to_i2c_event( {slv_dat[8:2], 1'b0, 1'b1} ),    
+					`MON_EVENT_P                                            
+				},                                                         
+				mon_slv_events               //	.actual
+			);                               //);
+			
+			
+			
+			expctd_cnt_idle_timeout = en_no_stops ? 1: 0;
+			//expctd_cnt_bit_violation
+			//expctd_cnt_cha_stuck; 
+			//expctd_cnt_chb_stuck;
+			
+			check_expctd_opt_events(
+				expctd_cnt_idle_timeout, 0, 0, 0,
+				
+				mon_opt_cnt_idle_timeout, 
+				mon_opt_cnt_bit_violation, 
+				mon_opt_cnt_cha_stuck, 
+				mon_opt_cnt_chb_stuck
+			);
+			
+			
+			
+			//---- write address and read 1 byte ----------------
+			
+			rst_all_mon();
+			if(en_rst_between_tran) begin
+				rst_uut();
+				#NS_T_LOW_MAX;
+			end
+			
+			init_drv_mst_wrbytes();
+			init_drv_slv_wrbytes();
+			
+			drv_mst_stop_after_byte        = 4'b1    ;
+			drv_mst_extra_stop_after_byte  = 4'hF    ;
+			drv_mst_extra_start_after_byte = 4'hF    ;
+			
+			drv_mst_wrbyte_0= { mst_dat[8:2], 1'b0, 1'b1};
+			//drv_mst_wrbyte_1= {       8'h55, 1'b1};
+			
+	
+			drv_slv_stop_after_byte        = 4'b0    ;
+			drv_slv_extra_stop_after_byte  = 4'hF    ;
+			drv_slv_extra_start_after_byte = 4'hF    ;
+			
+			drv_slv_wrbyte_0= { 7'hFF, 1'b1, 1'b1};
+			//drv_slv_wrbyte_1= {       8'hFF, 1'b0};
+			
+			
+			drv_mst_start                  = 1'b1    ;
+			drv_slv_start                  = 1'b1    ;
+			#1;
+			drv_mst_start                  = 1'b0    ;
+			drv_slv_start                  = 1'b0    ;
+			//@(posedge drv_mst_idle);
+			
+			//wait for mst and slv to be idle
+			while( !drv_mst_idle || !drv_slv_idle) begin
+				@(posedge i_clk);
+			end
+			
+			//wait for all lines to release
+			while( !cha_scl || !cha_sda || !chb_scl || !chb_sda) begin
+				@(posedge i_clk);
+			end
+			
+			if(en_no_stops) 
+				#NS_T_HI_MAX;
+			#1;
+			
+			
+			
+			check_expctd_i2c_events( 
+				"write address read 1 byte, master side",
+				32'd11 ,                     //	.num_expctd
+				mon_mst_num_events,          //	.num_actual
+				{                            //	.expctd({
+					`MON_EVENT_S,                                           
+					i2cbyte_to_i2c_event( {mst_dat[8:2], 1'b0, 1'b1} ),    
+					`MON_EVENT_P                                            
+				},                                                         
+				mon_mst_events               //	.actual
+			);                               //);
+			
+			
+			check_expctd_i2c_events( 
+				"write address read 1 byte, slave side",
+				32'd11 ,                     //	.num_expctd
+				mon_slv_num_events,          //	.num_actual
+				{                            //	.expctd({
+					`MON_EVENT_S,                                           
+					i2cbyte_to_i2c_event( {slv_dat[8:2], 1'b0, 1'b1} ),    
+					`MON_EVENT_P                                            
+				},                                                         
+				mon_slv_events               //	.actual
+			);                               //);
+			
+			
+			
+			expctd_cnt_idle_timeout = en_no_stops ? 1: 0;
+			//expctd_cnt_bit_violation
+			//expctd_cnt_cha_stuck; 
+			//expctd_cnt_chb_stuck;
+			
+			check_expctd_opt_events(
+				expctd_cnt_idle_timeout, 0, 0, 0,
+				
+				mon_opt_cnt_idle_timeout, 
+				mon_opt_cnt_bit_violation, 
+				mon_opt_cnt_cha_stuck, 
+				mon_opt_cnt_chb_stuck
+			);
+			
+		
 		end
 	
 	endtask
 	
 	
+	function [511:0] str_lalign;
+		input [511:0] str;
+		begin
+			str_lalign = str;
+			while( str_lalign[ 511 -:8] == 8'h00) begin
+				str_lalign = str_lalign << 8;
+			end
+		end
+	endfunction
+	
 
 	task check_expctd_i2c_events;
-		input [31:0] num_expctd;
-		input [31:0] num_actual;
+		input [511:0] substr_err;
+		input [31:0]  num_expctd;
+		input [31:0]  num_actual;
 
 		input [255:0] expctd;
 		input [255:0] actual;
@@ -985,6 +1125,7 @@ module tb();
 				$display("-------  Failed test: %s ------", current_test_name);
 				$display("-------  subpass config: %h ------", current_test_pass_config);
 				$display("    time: %t", $realtime);
+				$display("    %s", str_lalign(substr_err) );
 				$display("    number of expected events dont match actual");
 				$display("    expected: %d", num_expctd);
 				$display("    actual  : %d", num_actual);
@@ -998,6 +1139,7 @@ module tb();
 					$display("-------  Failed test: %s ------", current_test_name);
 					$display("-------  subpass config: %h ------", current_test_pass_config);
 					$display("    time: %t", $realtime);
+					$display("    %s", str_lalign(substr_err));
 					$display("    expected events don't match actual");
 					$write  ("    expected: ");
 					print_i2c_events( num_expctd, expctd);
@@ -1007,16 +1149,66 @@ module tb();
 					$display("");
 					failed = 1;
 					break_loop = 1;
-					
 				end
 			end
-			
 		end
 	endtask
 
+
+	task check_expctd_opt_events;
+		input [31:0] expctd_cnt_idle_timeout ;
+		input [31:0] expctd_cnt_bit_violation;
+		input [31:0] expctd_cnt_cha_stuck    ;
+		input [31:0] expctd_cnt_chb_stuck    ;
+		input [31:0] actual_cnt_idle_timeout ;
+		input [31:0] actual_cnt_bit_violation;
+		input [31:0] actual_cnt_cha_stuck    ;
+		input [31:0] actual_cnt_chb_stuck    ;
+		begin
+		
+				if( expctd_cnt_idle_timeout !== actual_cnt_idle_timeout) begin
+					$display("-------  Failed test: %s ------", current_test_name);
+					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("    time: %t", $realtime);
+					$display("    optional idle timeout count mismatch");
+					$display("    expected: %d", expctd_cnt_idle_timeout);
+					$display("    actual  : %d", actual_cnt_idle_timeout);
+					failed = 1;
+				end
+				
+				if( expctd_cnt_bit_violation !== actual_cnt_bit_violation) begin
+					$display("-------  Failed test: %s ------", current_test_name);
+					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("    time: %t", $realtime);
+					$display("    optional idle timeout count mismatch");
+					$display("    expected: %d", expctd_cnt_idle_timeout);
+					$display("    actual  : %d", actual_cnt_idle_timeout);
+					failed = 1;
+				end
+				
+				if( expctd_cnt_cha_stuck !== actual_cnt_cha_stuck) begin
+					$display("-------  Failed test: %s ------", current_test_name);
+					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("    time: %t", $realtime);
+					$display("    optional idle timeout count mismatch");
+					$display("    expected: %d", expctd_cnt_idle_timeout);
+					$display("    actual  : %d", actual_cnt_idle_timeout);
+					failed = 1;
+				end
+				
+				if( expctd_cnt_chb_stuck !== actual_cnt_chb_stuck) begin
+					$display("-------  Failed test: %s ------", current_test_name);
+					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("    time: %t", $realtime);
+					$display("    optional idle timeout count mismatch");
+					$display("    expected: %d", expctd_cnt_idle_timeout);
+					$display("    actual  : %d", actual_cnt_idle_timeout);
+					failed = 1;
+				end
 		
 		
-	
+		end
+	endtask
 	
 
 	

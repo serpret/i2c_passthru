@@ -81,7 +81,7 @@ module i2c_passthru_bittx #(
 );
 
 	reg [3:0] state, nxt_state;
-	reg tx_to_mst, nxt_tx_to_mst;
+	//reg tx_to_mst, nxt_tx_to_mst;
 	wire sda_mismatch;
 	wire sda_good;
 	
@@ -123,24 +123,26 @@ module i2c_passthru_bittx #(
 	end
 
 
-	localparam ST_IDLE               = 0  ;
-	localparam ST_SCL0_A             = 1  ;
-	localparam ST_SCL0_B             = 2  ;
-	localparam ST_SCL1_A_TX2MST      = 3  ;
-	localparam ST_SCL1_A_INIT        = 4  ;
-	localparam ST_SCL1_B_WAIT        = 5  ;
-	localparam ST_SCL1_C_MID         = 6  ;
-	localparam ST_SCL1_D_WAIT        = 7  ;
-	localparam ST_SCL1_E_FIN         = 8  ;
-	localparam ST_VIOLATION          = 9  ;
-	localparam ST_SLV_ON_MST_CH      = 10 ;
-	localparam ST_IDLE_SLV_ON_MST_CH = 11;
+	localparam ST_IDLE                   = 0  ;
+	localparam ST_TX2MST_SCL0_A          = 1  ;
+	localparam ST_TX2MST_SCL0_B          = 2  ;
+	localparam ST_TX2MST_SCL1_A          = 3  ;
+	localparam ST_TX2MST_SLV_ON_MST_CH   = 4  ;
+	localparam ST_SCL0_A                 = 5  ;
+	localparam ST_SCL0_B                 = 6  ;
+	localparam ST_SCL1_A_INIT            = 7  ;
+	localparam ST_SCL1_B_WAIT            = 8  ;
+	localparam ST_SCL1_C_MID             = 9  ;
+	localparam ST_SCL1_D_WAIT            = 10 ;
+	localparam ST_SCL1_E_FIN             = 11 ;
+	localparam ST_VIOLATION              = 12 ;
+	localparam ST_IDLE_SLV_ON_MST_CH     = 13 ;
 	
 	//FSM next state and output logic
 	always @(*) begin
 		//default else case
 		nxt_state = state;
-		nxt_tx_to_mst = tx_to_mst;
+		//nxt_tx_to_mst = tx_to_mst;
 		
 		o_slv_on_mst_ch = 0;
 		o_tx_done   = 0;
@@ -160,10 +162,15 @@ module i2c_passthru_bittx #(
 				o_sda = i_rx_sda_final;
 				timer_t_low_rst = 1;
 				
-				nxt_tx_to_mst = i_tx_is_to_mst;
-				if( i_start_tx)                     nxt_state = ST_SCL0_A;
+				//nxt_tx_to_mst = i_tx_is_to_mst;
+				if( i_start_tx) begin
+					if( i_tx_is_to_mst) nxt_state = ST_TX2MST_SCL0_A;
+					else                nxt_state = ST_SCL0_A;
+				end
+				//if( i_start_tx)                     nxt_state = ST_SCL0_A;
 			
 			end
+			
 			
 			ST_IDLE_SLV_ON_MST_CH:
 			begin
@@ -173,9 +180,56 @@ module i2c_passthru_bittx #(
 				timer_t_low_rst = 1;
 				o_slv_on_mst_ch = 1;
 				
-				nxt_tx_to_mst = i_tx_is_to_mst;
-				if( i_start_tx)                     nxt_state = ST_SCL0_A;
+				//nxt_tx_to_mst = i_tx_is_to_mst;
+				if( i_start_tx) begin
+					if( i_tx_is_to_mst) nxt_state = ST_TX2MST_SCL0_A;
+					else                nxt_state = ST_SCL0_A;
+				end
+				//if( i_start_tx)                     nxt_state = ST_SCL0_A;
 			end
+			
+			ST_TX2MST_SCL0_A             :
+			begin
+				o_scl = 0;
+				o_sda = i_rx_sda_init;
+				
+				if( i_rx_sda_init_valid  && sda_good ) 
+				//if( i_rx_sda_init_valid && timer_t_low_tc  ) 
+					                                nxt_state = ST_TX2MST_SCL0_B;
+			end
+			
+			ST_TX2MST_SCL0_B             :
+			begin
+				o_scl = 1;
+				o_sda = i_rx_sda_init;
+				//timer_t_low_rst = 1;
+				
+				if(i_scl) begin
+					nxt_state = ST_TX2MST_SCL1_A;
+					//if ( tx_to_mst)                 nxt_state = ST_TX2MST_SCL1_A;
+					//else                            nxt_state = ST_SCL1_A_INIT  ;
+				end
+			end
+			
+			
+			ST_TX2MST_SCL1_A      :
+			begin
+				o_scl = 1;
+				o_sda = i_rx_sda_init;
+				
+				if( sda_mismatch)                   nxt_state = ST_TX2MST_SLV_ON_MST_CH;
+				else if ( ~i_scl)                   nxt_state = ST_IDLE;
+				//if( ~i_scl)                         nxt_state = ST_IDLE;
+			end
+			
+			
+			ST_TX2MST_SLV_ON_MST_CH      :
+			begin
+				o_slv_on_mst_ch = 1;
+				
+				nxt_state = ST_IDLE_SLV_ON_MST_CH;
+			end
+			
 			
 			ST_SCL0_A             :
 			begin
@@ -194,20 +248,13 @@ module i2c_passthru_bittx #(
 				timer_t_low_rst = 1;
 				
 				if(i_scl) begin
-					if ( tx_to_mst)                 nxt_state = ST_SCL1_A_TX2MST;
-					else                            nxt_state = ST_SCL1_A_INIT  ;
+					nxt_state = ST_SCL1_A_INIT;
+					//if ( tx_to_mst)                 nxt_state = ST_TX2MST_SCL1_A;
+					//else                            nxt_state = ST_SCL1_A_INIT  ;
 				end
 			end
 			
-			ST_SCL1_A_TX2MST      :
-			begin
-				o_scl = 1;
-				o_sda = i_rx_sda_init;
-				
-				if( sda_mismatch)                   nxt_state = ST_SLV_ON_MST_CH;
-				else if ( ~i_scl)                   nxt_state = ST_IDLE;
-				//if( ~i_scl)                         nxt_state = ST_IDLE;
-			end
+		
 			
 			ST_SCL1_A_INIT        :
 			begin
@@ -279,12 +326,6 @@ module i2c_passthru_bittx #(
 				o_violation = 1;
 			end
 			
-			ST_SLV_ON_MST_CH      :
-			begin
-				o_slv_on_mst_ch = 1;
-				
-				nxt_state = ST_IDLE_SLV_ON_MST_CH;
-			end
 				
 			
 			default: 
@@ -332,7 +373,7 @@ module i2c_passthru_bittx #(
 	
 	//sequential logic without reset
 	always @(posedge i_clk) begin
-		tx_to_mst       <= nxt_tx_to_mst;
+		//tx_to_mst       <= nxt_tx_to_mst;
 		prev_f_ref      <= i_f_ref;
 		prev_o_sda      <= o_sda;
 		prev_i_sda      <= i_sda;

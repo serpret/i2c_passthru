@@ -205,10 +205,11 @@ module tb();
 			rst_uut();
 			#1;
 			if (
-				o_scl       !== 1 ||
-				o_sda       !== 1 ||
-				o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 1 ||
+				o_sda           !== 1 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 0 %t", $realtime);
 				failed = 1;
@@ -223,10 +224,11 @@ module tb();
 			start_time = $realtime;
 			while( o_sda !== 1'b0 && (time_elapsed( start_time) < NS_TB_TIMEOUT) ) begin
 				if (
-					o_scl       !== 1 ||
-					//o_sda       !== 1 ||
-					o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_scl           !== 1 ||
+					//o_sda         !== 1 ||
+					o_slv_on_mst_ch !== 0 ||
+					o_tx_done       !== 0 ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 1 %t", $realtime);
 					failed = 1;
@@ -241,10 +243,11 @@ module tb();
 			start_time = $realtime;
 			while( time_elapsed(start_time) < NS_T_LOW_MIN) begin
 				if (
-					o_scl       !== 1 ||
-					o_sda       !== 0 ||
-					o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_scl           !== 1 ||
+					o_sda           !== 0 ||
+					o_slv_on_mst_ch !== 0 ||
+					o_tx_done       !== 0 ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 2 %t", $realtime);
 					failed = 1;
@@ -268,10 +271,10 @@ module tb();
 			i_tx_is_to_mst = 1;
 			repeat(1) @(posedge i_clk);
 			i_start_tx = 0;
-			i_rx_sda_init_valid = 1;
+			i_rx_sda_init_valid = 0;
 			i_rx_sda_init  = 1;
 			i_rx_sda_final = 1;
-			i_rx_done = 1;
+			i_rx_done = 0;
 			i_scl = 0;
 			i_sda = 0;
 			
@@ -289,10 +292,11 @@ module tb();
 			repeat(1) @(posedge i_clk);
 			#1;
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 1 ||
-				o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 0 ||
+				o_sda           !== 1 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 1 %t", $realtime);
 				failed = 1;
@@ -300,14 +304,21 @@ module tb();
 			
 			i_scl = 0;
 			i_sda = 1;
+			repeat(1) @(posedge i_clk);
+			i_rx_sda_init_valid = 1;
+			i_rx_done = 1;
 			
-			//check o_scl does not rise before N_T_LOW_MIN
-			while( time_elapsed( time_start_fall_scl) < NS_T_LOW_MIN) begin
+			//repeat(1) @(posedge i_clk);
+			
+			
+			//scl should not rise before NS_T_SU_DAT_MIN
+			while( time_elapsed( time_start_chng_sda) < NS_T_SU_DAT_MIN) begin
 				if (
-					o_scl       !== 0 ||
-					o_sda       !== 1 ||
-					o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_scl           !== 0 ||
+					o_sda           !== 1 ||
+					o_slv_on_mst_ch !== 0 ||
+					o_tx_done       !== 0 ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 2 %t", $realtime);
 					failed = 1;
@@ -315,16 +326,19 @@ module tb();
 				#100;
 			end
 			
-			//wait for o_scl to rise by NS_T_LOW_MAX
-			while( o_scl !== 1 && (time_elapsed( time_start_fall_scl) < NS_T_LOW_MAX) ) begin
+			//wait for o_scl to rise by NS_T_SU_DAT_MAX
+			while( o_scl !== 1 && (time_elapsed( time_start_fall_scl) < NS_T_SU_DAT_MAX) ) begin
 				#100;
 			end
 			
+			
+			//#1;
 			if (
-				o_scl       !== 1 ||
-				o_sda       !== 1 ||
-				o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 1 ||
+				o_sda           !== 1 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 3 %t", $realtime);
 				failed = 1;
@@ -337,10 +351,11 @@ module tb();
 			//check outputs dont change until i_scl falls
 			while( time_elapsed( time_start_rise_scl) < NS_T_LOW_MIN) begin
 				if (
-					o_scl       !== 1 ||
-					o_sda       !== 1 ||
-					o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_scl           !== 1 ||
+					o_sda           !== 1 ||
+					o_slv_on_mst_ch !== 0 ||
+					o_tx_done       !== 0 ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 4 %t", $realtime);
 					failed = 1;
@@ -355,10 +370,11 @@ module tb();
 				@(posedge i_clk);
 				#1;
 				if (
-					o_scl       !== 0 ||
+					o_scl           !== 0 ||
 					//o_sda       !== 1 ||
+					o_slv_on_mst_ch !== 0 ||
 					//o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_violation     !== 0
 				) begin
 					$display("    fail 5 %t", $realtime);
 					$display("    o_scl %b", o_scl);
@@ -413,10 +429,11 @@ module tb();
 				
 				#1;
 				if (
-					o_scl       !== 0             ||
-					o_sda       !== i_rx_sda_init ||
-					o_tx_done   !== 0             ||
-					o_violation !== 0
+					o_scl           !== 0             ||
+					o_sda           !== i_rx_sda_init ||
+					o_slv_on_mst_ch !== 0             ||
+					o_tx_done       !== 0             ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 0 %t", $realtime);
 					failed = 1;
@@ -439,10 +456,11 @@ module tb();
 			//scl should not rise until T_SU_DAT
 			while( (time_elapsed( time_start_chng_sda) < NS_T_SU_DAT_MIN) ) begin
 				if (
-					o_scl       !== 0             ||
-					o_sda       !== i_rx_sda_init ||
-					o_tx_done   !== 0             ||
-					o_violation !== 0
+					o_scl           !== 0             ||
+					o_sda           !== i_rx_sda_init ||
+					o_slv_on_mst_ch !== 0             ||
+					o_tx_done       !== 0             ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 1 %t", $realtime);
 					failed = 1;
@@ -458,10 +476,11 @@ module tb();
 			end
 			
 			if (
-				o_scl       !== 1             ||
-				o_sda       !== i_rx_sda_init ||
-				o_tx_done   !== 0             ||
-				o_violation !== 0
+				o_scl           !== 1             ||
+				o_sda           !== i_rx_sda_init ||
+				o_slv_on_mst_ch !== 0             ||
+				o_tx_done       !== 0             ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 2 %t", $realtime);
 				failed = 1;
@@ -695,7 +714,7 @@ module tb();
 			i_scl = 0;
 			i_sda = 1;
 			
-			//check o_scl does not rise before N_T_LOW_MIN
+			//check o_scl does not rise before NS_T_LOW_MIN
 			while( time_elapsed( time_start_fall_scl) < NS_T_LOW_MIN) begin
 				if (
 					o_scl           !== 0 ||

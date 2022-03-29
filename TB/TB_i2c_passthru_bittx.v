@@ -984,8 +984,9 @@ module tb();
 
 			#1;
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 1 ||
+				o_scl           !== 0 ||
+				o_sda           !== 1 ||
+				o_slv_on_mst_ch !== 0 ||
 				//o_tx_done   !== 0 ||
 				o_violation !== 0
 			) begin
@@ -996,10 +997,11 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 1 ||
-				o_tx_done   !== 1 ||
-				o_violation !== 0
+				o_scl           !== 0 ||
+				o_sda           !== 1 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 1 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 3 %t", $realtime);
 				failed = 1;
@@ -1028,10 +1030,11 @@ module tb();
 			//check o_sda does not change before t_low
 			while( time_elapsed( time_start_chng_sda) < NS_T_LOW_MIN) begin
 				if (
-					o_scl       !== 1 ||
-					o_sda       !== 1 ||
-					o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_scl           !== 1 ||
+					o_sda           !== 1 ||
+					o_slv_on_mst_ch !== 0 ||
+					o_tx_done       !== 0 ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 0 %t", $realtime);
 					failed = 1;
@@ -1051,10 +1054,11 @@ module tb();
 			#1;
 			
 			if (
-				o_scl       !== 1 ||
-				o_sda       !== 0 ||
-				o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 1 ||
+				o_sda           !== 0 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 1 %t", $realtime);
 				failed = 1;
@@ -1066,10 +1070,11 @@ module tb();
 				
 				#1;
 				if (
-					o_scl       !== 1              ||
-					o_sda       !== i_rx_sda_final ||
-					o_tx_done   !== 0              ||
-					o_violation !== 0
+					o_scl           !== 1              ||
+					o_sda           !== i_rx_sda_final ||
+					o_slv_on_mst_ch !== 0              ||
+					o_tx_done       !== 0              ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 2 %t", $realtime);
 					failed = 1;
@@ -1094,10 +1099,11 @@ module tb();
 			//check o_scl does not change before t_low
 			while( time_elapsed( time_start_chng_sda) < NS_T_LOW_MIN) begin
 				if (
-					o_scl       !== 1 ||
-					o_sda       !== 0 ||
-					o_tx_done   !== 0 ||
-					o_violation !== 0
+					o_scl           !== 1 ||
+					o_sda           !== 0 ||
+					o_slv_on_mst_ch !== 0 ||
+					o_tx_done       !== 0 ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 3 %t", $realtime);
 					failed = 1;
@@ -1117,10 +1123,11 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 0 ||
-				//o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 0 ||
+				o_sda           !== 0 ||
+				o_slv_on_mst_ch !== 0 ||
+				//o_tx_done     !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 4 %t", $realtime);
 				failed = 1;
@@ -1129,10 +1136,11 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 0 ||
-				o_tx_done   !== 1 ||
-				o_violation !== 0
+				o_scl           !== 0 ||
+				o_sda           !== 0 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 1 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 5 %t", $realtime);
 				failed = 1;
@@ -1170,10 +1178,11 @@ module tb();
 			#1;
 			
 			if (
-				o_scl       !== 1 ||
-				o_sda       !== 0 ||
-				o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 1 ||
+				o_sda           !== 0 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 1 %t", $realtime);
 				failed = 1;
@@ -1184,10 +1193,11 @@ module tb();
 			while(  (time_elapsed( time_start_chng_sda) < NS_T_LOW_MAX) ) begin
 			
 				if (
-					o_scl       !== 1              ||
-					o_sda       !== i_rx_sda_final ||
-					o_tx_done   !== 0              ||
-					o_violation !== 0
+					o_scl           !== 1              ||
+					o_sda           !== i_rx_sda_final ||
+					o_slv_on_mst_ch !== 0              ||
+					o_tx_done       !== 0              ||
+					o_violation     !== 0
 				) begin
 					$display("    fail 2 %t", $realtime);
 					failed = 1;
@@ -1206,10 +1216,11 @@ module tb();
 			//check o_scl does not change before t_low
 			#1;
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 0 ||
-				//o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl           !== 0 ||
+				o_sda           !== 0 ||
+				o_slv_on_mst_ch !== 0 ||
+				//o_tx_done     !== 0 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 3 %t", $realtime);
 				failed = 1;
@@ -1219,10 +1230,11 @@ module tb();
 			#1;
 			
 			if (
-				o_scl       !== 0 ||
-				o_sda       !== 0 ||
-				o_tx_done   !== 1 ||
-				o_violation !== 0
+				o_scl           !== 0 ||
+				o_sda           !== 0 ||
+				o_slv_on_mst_ch !== 0 ||
+				o_tx_done       !== 1 ||
+				o_violation     !== 0
 			) begin
 				$display("    fail 4 %t", $realtime);
 				failed = 1;
@@ -1251,7 +1263,8 @@ module tb();
 				//o_scl       !== 0 ||
 				//o_sda       !== 0 ||
 				//o_tx_done   !== 1 ||
-				o_violation !== 1
+				o_slv_on_mst_ch !== 0 ||
+				o_violation     !== 1
 			) begin
 				$display("    fail 0 %t", $realtime);
 				failed = 1;
@@ -1276,7 +1289,8 @@ module tb();
 				//o_scl       !== 0 ||
 				//o_sda       !== 0 ||
 				//o_tx_done   !== 1 ||
-				o_violation !== 1
+				o_slv_on_mst_ch !== 0 ||
+				o_violation     !== 1
 			) begin
 				$display("    fail 0 %t", $realtime);
 				failed = 1;
@@ -1300,7 +1314,8 @@ module tb();
 				//o_scl       !== 0 ||
 				//o_sda       !== 0 ||
 				//o_tx_done   !== 1 ||
-				o_violation !== 1
+				o_slv_on_mst_ch !== 0 ||
+				o_violation     !== 1
 			) begin
 				$display("    fail 0 %t", $realtime);
 				failed = 1;
@@ -1344,10 +1359,11 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 1             ||
-				o_sda       !== i_rx_sda_init ||
-				o_tx_done   !== 0             ||
-				o_violation !== 0
+				o_scl           !== 1             ||
+				o_sda           !== i_rx_sda_init ||
+				o_slv_on_mst_ch !== 0             ||
+				o_tx_done       !== 0             ||
+				o_violation     !== 0
 			) begin
 				$display("    set_state_tx_to_slv_sdainit fail 0  %t", $realtime);
 				failed = 1;
@@ -1377,10 +1393,11 @@ module tb();
 			
 						#1;
 			if (
-				o_scl       !== 1             ||
-				o_sda       === sda_init      ||
-				o_tx_done   !== 0             ||
-				o_violation !== 0
+				o_scl           !== 1             ||
+				o_sda           === sda_init      ||
+				o_slv_on_mst_ch !== 0             ||
+				o_tx_done       !== 0             ||
+				o_violation     !== 0
 			) begin
 				$display("    set_state_tx_to_slv_sdamid fail 0  %t", $realtime);
 				failed = 1;
@@ -1415,10 +1432,11 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 1             ||
-				o_sda       !== 1             ||
-				o_tx_done   !== 0             ||
-				o_violation !== 0
+				o_scl           !== 1             ||
+				o_sda           !== 1             ||
+				o_slv_on_mst_ch !== 0             ||
+				o_tx_done       !== 0             ||
+				o_violation     !== 0
 			) begin
 				$display("    set_state_idle_low fail 0  %t", $realtime);
 				failed = 1;
@@ -1429,10 +1447,11 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 1             ||
-				o_sda       !== 0             ||
-				o_tx_done   !== 0             ||
-				o_violation !== 0
+				o_scl           !== 1             ||
+				o_sda           !== 0             ||
+				o_slv_on_mst_ch !== 0             ||
+				o_tx_done       !== 0             ||
+				o_violation     !== 0
 			) begin
 				$display("    set_state_idle_low fail 1  %t", $realtime);
 				failed = 1;
@@ -1445,10 +1464,11 @@ module tb();
 			while(  (time_elapsed( time_start_chng_sda) < NS_T_LOW_MIN) ) begin
 			
 				if (
-					o_scl       !== 1              ||
-					o_sda       !== 0              ||
-					o_tx_done   !== 0              ||
-					o_violation !== 0
+					o_scl           !== 1              ||
+					o_sda           !== 0              ||
+					o_slv_on_mst_ch !== 0              ||
+					o_tx_done       !== 0              ||
+					o_violation     !== 0
 				) begin
 					$display("    set_state_idle_low fail 2 %t", $realtime);
 					failed = 1;
@@ -1465,10 +1485,11 @@ module tb();
 
 			
 			if (
-				o_scl       !== 0              ||
-				o_sda       !== 0              ||
-				//o_tx_done   !== 0              ||
-				o_violation !== 0
+				o_scl           !== 0              ||
+				o_sda           !== 0              ||
+				o_slv_on_mst_ch !== 0              ||
+				//o_tx_done     !== 0              ||
+				o_violation     !== 0
 			) begin
 				$display("    set_state_idle_low fail 3 %t", $realtime);
 				failed = 1;
@@ -1481,10 +1502,11 @@ module tb();
 			#1;
 			
 			if (
-				o_scl       !== 0              ||
-				o_sda       !== 0              ||
-				o_tx_done   !== 1              ||
-				o_violation !== 0
+				o_scl           !== 0              ||
+				o_sda           !== 0              ||
+				o_slv_on_mst_ch !== 0              ||
+				o_tx_done       !== 1              ||
+				o_violation     !== 0
 			) begin
 				$display("    set_state_idle_low fail 4 %t", $realtime);
 				failed = 1;

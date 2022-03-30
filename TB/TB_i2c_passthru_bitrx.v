@@ -475,7 +475,8 @@ module tb();
 			i_tx_done    = 0;
 			
 			//check values before T_LOW minimum. o_rx_sda_init should follow i_sda
-			i_sda        = 0;
+			
+			i_sda        = rx_frm_slv ? 0 : sda_init;
 
 			#1;
 			while( time_elapsed( time_start_fall_scl) < NS_T_LOW_MIN) begin
@@ -489,16 +490,16 @@ module tb();
 					o_rx_sda_mid_change !== 0     ||
 					//o_rx_sda_final      !==  ||
 	
-					o_scl       !== 0  ||
-					o_sda       !== 1  ||
-					o_rx_done   !== 0  ||
+					o_scl       !== !rx_frm_slv  ||
+					o_sda       !== 1            ||
+					o_rx_done   !== 0            ||
 					o_violation !== 0  
 	
 				) begin
 					$display("    set_state_sdainit fail 0 %t", $realtime);
 					failed = 1;
 				end
-				i_sda = ~i_sda;
+				i_sda = rx_frm_slv? ~i_sda: sda_init;
 				
 			end
 			

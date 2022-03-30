@@ -69,7 +69,7 @@ module i2c_passthru_bitrx #(
 	output reg o_violation
 );
 	reg [3:0] state, nxt_state;
-	reg rx_frm_slv, nxt_rx_frm_slv;
+	//reg rx_frm_slv, nxt_rx_frm_slv;
 	
 	
 	reg nxt_rx_sda_init  ;   //o_rx_sda_init  
@@ -109,23 +109,24 @@ module i2c_passthru_bitrx #(
 	
 	
 	
-	localparam ST_IDLE                 = 0;
-	localparam ST_SCL0_A               = 1; //o_scl and i_scl 0
-	localparam ST_SCL0_B               = 2; //o_scl is 1, waiting for i_scl to rise
-	localparam ST_SCL1_INIT_FRM_SLV    = 3; //mid init part of transaction from slave
-	localparam ST_SCL1_INIT            = 4; //mid init part of transaction from master
-	localparam ST_SCL1_INIT_DONE       = 5; //transaction done, init only
-	localparam ST_SCL1_MID             = 6; //transferring to mid part of transaction (mid sda change, only frm master)
-	localparam ST_SCL1_MID_DONE        = 7; //transaction done, init and mid sda change
-	localparam ST_SCL1_FIN_DONE             = 8; //transferring to fin part of transaction (mid sda change twice, wait for done)
-	localparam ST_VIOLATION            = 9; //violation detected
+	localparam ST_IDLE                 = 0 ;
+	localparam ST_SCL0_A_FRM_SLV       = 1 ; //o_scl and i_scl 0
+	localparam ST_SCL0_B_FRM_SLV       = 2 ; //o_scl is 1, waiting for i_scl to rise
+	localparam ST_SCL1_INIT_FRM_SLV    = 3 ; //mid init part of transaction from slave
+	localparam ST_SCL0                 = 4 ; //o_scl is 1, waiting for i_scl to rise
+	localparam ST_SCL1_INIT            = 5 ; //mid init part of transaction from master
+	localparam ST_SCL1_INIT_DONE       = 6 ; //transaction done, init only
+	localparam ST_SCL1_MID             = 7 ; //transferring to mid part of transaction (mid sda change, only frm master)
+	localparam ST_SCL1_MID_DONE        = 8 ; //transaction done, init and mid sda change
+	localparam ST_SCL1_FIN_DONE        = 9 ; //transferring to fin part of transaction (mid sda change twice, wait for done)
+	localparam ST_VIOLATION            = 10; //violation detected
 	
 	
 	always @(*) begin
 		//default else case
 		nxt_state = state;
 		
-		nxt_rx_frm_slv = rx_frm_slv;
+		//nxt_rx_frm_slv = rx_frm_slv;
 		timer_t_low_rst = 0;
 		
 		set_sda_init   = 0;
@@ -148,29 +149,32 @@ module i2c_passthru_bitrx #(
 				o_sda            = 1   ;
 				o_rx_done        = 1   ;
 				timer_t_low_rst  = 1   ;
-				nxt_rx_frm_slv   = i_rx_frm_slv;
+				//nxt_rx_frm_slv   = i_rx_frm_slv;
 				
-				if( i_start_rx)  nxt_state = ST_SCL0_A;
+				if( i_start_rx)  begin
+					if( i_rx_frm_slv) nxt_state = ST_SCL0_A_FRM_SLV;
+					else              nxt_state = ST_SCL0;
+				
+				end
 				
 			end
 			
-			ST_SCL0_A           : 
+			ST_SCL0_A_FRM_SLV           : 
 			begin
 				o_scl            = 0   ;
 				o_sda            = 1   ;
 				set_sda_init     = 1;
-				if( timer_t_low_tc) nxt_state = ST_SCL0_B;
+				if( timer_t_low_tc) nxt_state = ST_SCL0_B_FRM_SLV;
 			end
 			   
-			ST_SCL0_B           : 
+			ST_SCL0_B_FRM_SLV           : 
 			begin
 				o_scl            = 1 ;
 				o_sda            = 1 ;
 				set_sda_init     = 1 ;
 				timer_t_low_rst  = 1 ;
 				if( i_scl) begin
-					if( rx_frm_slv) nxt_state = ST_SCL1_INIT_FRM_SLV;
-					else            nxt_state = ST_SCL1_INIT;
+					nxt_state = ST_SCL1_INIT_FRM_SLV;
 				end
 			end
 			   
@@ -183,6 +187,18 @@ module i2c_passthru_bitrx #(
 				
 				if( ~i_scl || (i_sda != o_rx_sda_init) ) nxt_state = ST_VIOLATION;
 				else if( timer_t_low_tc )                nxt_state = ST_SCL1_INIT_DONE;
+			end
+			
+			ST_SCL0:
+			begin
+				o_scl            = 1 ;
+				o_sda            = 1 ;
+				set_sda_init     = 1 ;
+				//timer_t_low_rst  = 1 ;
+				if( i_scl) begin
+					nxt_state = ST_SCL1_INIT;
+				end
+			
 			end
 			   
 			ST_SCL1_INIT        : 
@@ -284,7 +300,7 @@ module i2c_passthru_bitrx #(
 	
 	//sequential logic without reset
 	always @(posedge i_clk) begin
-		rx_frm_slv        <= nxt_rx_frm_slv  ;
+		//rx_frm_slv        <= nxt_rx_frm_slv  ;
 		prev_f_ref        <= i_f_ref         ;
 		timer_t_low       <= nxt_timer_t_low ;
 		//o_rx_sda_init     <= nxt_rx_sda_init ;

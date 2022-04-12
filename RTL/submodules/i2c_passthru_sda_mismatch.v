@@ -22,10 +22,13 @@
 //////////////////////////////////////////////////////////////////////////////
 
 
-//detect if signal input and output mismatch (usefull for checking slow changing
+//detect if signal i_padin_sig and i_padout_sig mismatch 
+//(usefull for checking slow changing
 //signals like opendrain to see if some other "master" is holding the bus).
 //Uses timeout after pad output change to determine if there is mismatch.
-//Also output o_sda_good if sda has not changed for F_REF_T_SU_DAT time.
+//
+//Also output output o_t_su_dat_ok if i_padin_sig has not changed
+//for t_su timing (see F_REF_T_SU_DAT and i_f_ref)
 module i2c_passthru_sda_mismatch #(
 
 	//F_REF values should always be at least 2.
@@ -52,8 +55,9 @@ module i2c_passthru_sda_mismatch #(
 	input i_padin_sig , //signal coming into FPGA
 	input i_padout_sig, //signal leaving FPGA
 	
+	output     o_t_su_dat_ok,
 	output reg o_mismatch,
-	output reg o_sda_good
+	output reg o_match
 
 );
 	// reg and wire declarations
@@ -73,7 +77,7 @@ module i2c_passthru_sda_mismatch #(
 	wire timer_t_r_tc;       //terminal counts for timers
 	wire timer_t_su_tc;      //terminal counts for timers
 
-	reg  timer_t_su_rst ; // resets for timers
+	//reg  timer_t_su_rst ; // resets for timers
 
 	// assignments
 	
@@ -82,57 +86,63 @@ module i2c_passthru_sda_mismatch #(
 	assign change_padin_sig  = ( prev_padin_sig  != i_padin_sig );
 	assign timer_t_r_tc      = ( timer_t_r       == 0           );     
 	assign timer_t_su_tc     = ( timer_t_su      == 0           );     
-	
+	assign o_t_su_dat_ok       =  timer_t_su_tc;
 	
 	
 	localparam ST_MATCH           = 0;
 	localparam ST_WAIT            = 1;
 	localparam ST_MISMATCH        = 2;
-	localparam ST_MATCH_WAIT_T_SU = 3;
+	//localparam ST_MATCH_WAIT_T_SU = 3;
 	
 	//FSM next state and output logic
 	always @(*) begin
 		//default else case
 		nxt_state = state;
 		o_mismatch= 1'b0;
-		timer_t_su_rst = 1'b0; 
-		o_sda_good = 1'b0;
+		//timer_t_su_rst = 1'b0; 
+		o_match = 1'b0;
 		
 		case( state) 
 			ST_MATCH    :
 			begin
-				o_sda_good     = 1'b1;
-				timer_t_su_rst = 1'b1;
+				o_match     = 1'b1;
+				//timer_t_su_rst = 1'b1;
 				
-				if(       change_padout_sig)           nxt_state = ST_WAIT;
-				else if ( change_padin_sig )           nxt_state = ST_MISMATCH;
+				if(                 change_padout_sig )   nxt_state = ST_WAIT;
+				else if ( i_padin_sig != i_padout_sig )   nxt_state = ST_MISMATCH;
 			end
 			
 			ST_WAIT     :
 			begin
-				timer_t_su_rst = 1'b1;
-				if(       timer_t_r_tc               ) nxt_state = ST_MISMATCH;
-				else if ( i_padin_sig == i_padout_sig) nxt_state = ST_MATCH_WAIT_T_SU;
+				//timer_t_su_rst = 1'b1;
+				if(       timer_t_r_tc               ) begin
+					if ( i_padin_sig == i_padout_sig) nxt_state = ST_MATCH;
+					else                              nxt_state = ST_MISMATCH;
+				end
+				//else if ( i_padin_sig == i_padout_sig) nxt_state = ST_MATCH_WAIT_T_SU;
+				//else if ( i_padin_sig == i_padout_sig) nxt_state = ST_MATCH;
+
 			end
 			
 			ST_MISMATCH :
 			begin
 				o_mismatch     = 1'b1;
-				timer_t_su_rst = 1'b1;
+				//timer_t_su_rst = 1'b1;
 				
-				if ( i_padin_sig == i_padout_sig)      nxt_state = ST_MATCH_WAIT_T_SU;
+				if(                 change_padout_sig)   nxt_state = ST_WAIT;
+				else if ( i_padin_sig == i_padout_sig)   nxt_state = ST_MATCH;
 
 			end
 			
-			ST_MATCH_WAIT_T_SU:
-			begin
-				timer_t_su_rst = 1'b0;
-				
-				if(       timer_t_su_tc    )           nxt_state = ST_MATCH;
-				else if ( change_padout_sig)           nxt_state = ST_WAIT;
-				else if ( change_padin_sig )           nxt_state = ST_MISMATCH;
-			
-			end
+			//ST_MATCH_WAIT_T_SU:
+			//begin
+			//	timer_t_su_rst = 1'b0;
+			//	
+			//	if(       timer_t_su_tc    )           nxt_state = ST_MATCH;
+			//	else if ( change_padout_sig)           nxt_state = ST_WAIT;
+			//	else if ( change_padin_sig )           nxt_state = ST_MISMATCH;
+			//
+			//end
 			
 			default: 
 			begin
@@ -145,13 +155,13 @@ module i2c_passthru_sda_mismatch #(
 	
 	//timer logic
 	always @(*) begin
-		if( i_padin_sig == i_padout_sig)     nxt_timer_t_r = F_REF_T_R;
+		if(  change_padout_sig)     nxt_timer_t_r = F_REF_T_R;
 		else if( pulse_ref && ~timer_t_r_tc) nxt_timer_t_r = timer_t_r - 1'b1;
 		else                                 nxt_timer_t_r = timer_t_r;
 	end
 	
 	always @(*) begin
-		if( timer_t_su_rst )                  nxt_timer_t_su = F_REF_T_SU_DAT;
+		if( change_padin_sig )                nxt_timer_t_su = F_REF_T_SU_DAT;
 		else if( pulse_ref && ~timer_t_su_tc) nxt_timer_t_su = timer_t_su - 1'b1;
 		else                                  nxt_timer_t_su = timer_t_su;
 	end

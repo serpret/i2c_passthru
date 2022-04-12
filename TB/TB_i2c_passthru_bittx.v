@@ -3,11 +3,14 @@
 
 module tb();
 	//parameters
+	
+	// timeouts use by testbench (in nanoseconds)
 	localparam NS_TB_TIMEOUT    = 100000;
 	localparam NS_T_LOW_MIN     = 4000;
 	localparam NS_T_LOW_MAX     = 6000;
 	localparam NS_T_SU_DAT_MIN  =  250;
 	localparam NS_T_SU_DAT_MAX  = 6000;
+	localparam NS_T_R_MAX       = 2000;
 
 	
 	localparam F_REF_T_R      = 7 ; //assume f_ref 4mhz
@@ -117,6 +120,7 @@ module tb();
 		test_tx_to_mst2();
 		test_tx_to_mst3();
 		test_tx_to_mst4();
+		//test_tx_to_mst5();
 		#1_000;
 		reinit_start_times();
 		rst_uut();
@@ -633,13 +637,13 @@ module tb();
 			i_rx_sda_init_valid = 0;
 			i_rx_sda_init  = 1;
 			i_rx_sda_final = 0;
-			i_rx_done = 0;
+			i_rx_done = 1;
 			i_scl = 0;
 			i_sda = 0;
 			repeat(1) @(posedge i_clk);
 			i_start_tx = 0;
-			repeat(1) @(posedge i_clk);
 			i_rx_sda_init_valid = 1;
+			repeat(1) @(posedge i_clk);
 			
 			
 			
@@ -651,19 +655,87 @@ module tb();
 			
 			#1;
 			if (
-				o_scl       !== 0 ||
-				//o_sda       !== 1 ||
-				o_slv_on_mst_ch !== 0 ||
-				o_tx_done   !== 0 ||
-				o_violation !== 0
+				o_scl             !== 1 ||
+				o_sda             !== 1 ||
+				//o_slv_on_mst_ch !== 0 ||
+				o_tx_done         !== 0 ||
+				o_violation       !== 0
 			) begin
 				$display("    fail 0 %t", $realtime);
 				failed = 1;
 			end
 			
+			i_scl = 1;
+			
+			//wait for o_slv_on_mst_ch to rise
+			#1;
+			
+			while( o_slv_on_mst_ch !== 1 && (time_elapsed( time_start_rise_scl) < NS_T_R_MAX)) begin
+				#100;
+			end
+			
+			#1;
+			if (
+				o_scl           !== 1 ||
+				//o_sda         !== 1 ||
+				o_slv_on_mst_ch !== 1 ||
+				o_tx_done       !== 0 ||
+				o_violation     !== 0
+			) begin
+				$display("    fail 1 %t", $realtime);
+				failed = 1;
+			end
+			
+			
 			
 		end
 	endtask
+	
+	
+	
+	//test module wants to set sda high but master side never releases sda
+	//(possible slave on master side)
+	//task test_tx_to_mst5();
+	//	begin
+	//		$display("--- test_tx_to_mst5 %t ---", $realtime);
+	//		
+	//		set_state_idle_low();
+	//		
+	//		i_start_tx = 1;
+	//		i_tx_is_to_mst = 1;
+	//		
+	//		i_rx_sda_init_valid = 1;
+	//		i_rx_sda_init  = 1;
+	//		i_rx_sda_final = 0;
+	//		i_rx_done = 1;
+	//		i_scl = 0;
+	//		i_sda = 0;
+	//		
+	//		repeat(1) @(posedge i_clk);
+	//		i_start_tx = 0;
+	//		
+	//		//wait for o_scl to rise by NS_T_LOW_MAX
+	//		while( o_scl !== 1 && (time_elapsed( time_start_fall_scl) < NS_T_LOW_MAX) ) begin
+	//			#100;
+	//		end
+	//		
+	//		repeat(4) @(posedge i_clk);
+	//		#1;
+	//		if (
+	//			o_scl       !== 1 ||
+	//			//o_sda       !== 1 ||
+	//			o_slv_on_mst_ch !== 1 ||
+	//			o_tx_done   !== 0 ||
+	//			o_violation !== 0
+	//		) begin
+	//			$display("    fail 0 %t", $realtime);
+	//			failed = 1;
+	//		end
+	//		
+	//
+	//	end
+	//endtask
+
 	
 	//go through transmit to slave transaction with i_rx_done early
 	task test_tx_to_slv1;
@@ -1283,10 +1355,19 @@ module tb();
 			i_sda = 0;
 			repeat(2) @(posedge i_clk);
 			
+			
+			//wait for o_violation to rise
+			#1;
+			
+			while( o_violation !== 1 && (time_elapsed( time_start_chng_sda) < NS_T_R_MAX)) begin
+				#100;
+			end
+			
+			
 			#1;
 			
 			if (
-				//o_scl       !== 0 ||
+				  o_scl       !== 1 ||
 				//o_sda       !== 0 ||
 				//o_tx_done   !== 1 ||
 				o_slv_on_mst_ch !== 0 ||

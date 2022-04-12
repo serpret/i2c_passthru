@@ -83,7 +83,9 @@ module i2c_passthru_bittx #(
 	reg [3:0] state, nxt_state;
 	//reg tx_to_mst, nxt_tx_to_mst;
 	wire sda_mismatch;
-	wire sda_good;
+	wire sda_match;
+	wire t_su_dat_ok;
+	wire sda_stable;
 	
 	reg prev_f_ref;
 	wire pulse_ref;
@@ -108,8 +110,8 @@ module i2c_passthru_bittx #(
 	assign 	pulse_ref = ~prev_f_ref && i_f_ref;
 	assign timer_t_low_tc     = timer_t_low     == 0;
 	assign timer_t_low_sda_tc = timer_t_low_sda == 0;
-
-	
+	assign sda_stable = t_su_dat_ok && (sda_mismatch || sda_match);
+                         
 	always @(*) begin
 		if( timer_t_low_rst )                  nxt_timer_t_low = F_REF_T_LOW;
 		else if( pulse_ref && ~timer_t_low_tc) nxt_timer_t_low = timer_t_low - 1'b1;
@@ -193,7 +195,7 @@ module i2c_passthru_bittx #(
 				o_scl = 0;
 				o_sda = i_rx_sda_init;
 				
-				if( i_rx_sda_init_valid  && sda_good ) 
+				if( i_rx_sda_init_valid  && sda_stable) 
 				//if( i_rx_sda_init_valid && timer_t_low_tc  ) 
 					                                nxt_state = ST_TX2MST_SCL0_B;
 			end
@@ -236,7 +238,7 @@ module i2c_passthru_bittx #(
 				o_scl = 0;
 				o_sda = i_rx_sda_init;
 				
-				if( i_rx_sda_init_valid && timer_t_low_tc && sda_good ) 
+				if( i_rx_sda_init_valid && timer_t_low_tc && sda_stable ) 
 				//if( i_rx_sda_init_valid && timer_t_low_tc  ) 
 					                                nxt_state = ST_SCL0_B;
 			end
@@ -351,8 +353,9 @@ module i2c_passthru_bittx #(
 		.i_padin_sig ( i_sda), //signal coming into FPGA
 		.i_padout_sig( o_sda), //signal leaving FPGA
 		
-		.o_mismatch(sda_mismatch),
-		.o_sda_good(sda_good    )
+		.o_t_su_dat_ok( t_su_dat_ok ),
+		.o_mismatch   ( sda_mismatch),
+		.o_match      ( sda_match   )
 	);
 
 	//sequential logic that requires reset
@@ -365,9 +368,7 @@ module i2c_passthru_bittx #(
 			//start state assume bus is idle and main ctrl switches slave to this module
 			state         <= ST_SCL1_A_INIT;
 			timer_t_low   <= 0;
-
 		end
-	
 	end
 	
 	

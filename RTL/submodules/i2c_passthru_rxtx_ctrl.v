@@ -41,6 +41,8 @@ module i2c_passthru_rxtx_ctrl(
 	input i_rx_sda_init_valid,
 	input i_rx_sda_init,
 	
+	input i_tx_slv_on_mst_ch,
+	
 	output reg o_start,
 	output reg o_tx_to_mst
 );
@@ -48,9 +50,10 @@ module i2c_passthru_rxtx_ctrl(
 	reg [3:0] bit_cnt, nxt_bit_cnt;
 	reg       inc_bit_cnt;
 	
-	reg first_byte_n, nxt_first_byte_n;
-	reg read_mode   , nxt_read_mode;
-	reg ack_failed  , nxt_ack_failed;
+	reg first_byte_n   , nxt_first_byte_n   ;
+	reg read_mode      , nxt_read_mode      ;
+	reg ack_failed     , nxt_ack_failed     ;
+	reg slv_on_mst_side, nxt_slv_on_mst_side;
 	
 	//reg nxt_slv_is_rx;
 	//reg set_slv_is_rx;
@@ -86,17 +89,26 @@ module i2c_passthru_rxtx_ctrl(
 	assign cha_start      =   i_cha_scl    &  cha_negedge_sda;
 	assign chb_start      =   i_chb_scl    &  chb_negedge_sda;
 
+	assign nxt_slv_on_mst_side = slv_on_mst_side | i_tx_slv_on_mst_ch;
 
 	always @(*) begin
-		case( {bit_willbe_ack, read_mode, ack_failed} )
-			3'b000: bit_willbe_slv_rx = 0;
-			3'b001: bit_willbe_slv_rx = 0;
-			3'b010: bit_willbe_slv_rx = 0;
-			3'b011: bit_willbe_slv_rx = 1;
-			3'b100: bit_willbe_slv_rx = 1;
-			3'b101: bit_willbe_slv_rx = 1;
-			3'b110: bit_willbe_slv_rx = 0;
-			3'b111: bit_willbe_slv_rx = 0;
+		case( {slv_on_mst_side, bit_willbe_ack, read_mode, ack_failed} )
+			4'b0000: bit_willbe_slv_rx = 0;
+			4'b0001: bit_willbe_slv_rx = 0;
+			4'b0010: bit_willbe_slv_rx = 0;
+			4'b0011: bit_willbe_slv_rx = 1;
+			4'b0100: bit_willbe_slv_rx = 1;
+			4'b0101: bit_willbe_slv_rx = 1;
+			4'b0110: bit_willbe_slv_rx = 0;
+			4'b0111: bit_willbe_slv_rx = 0;
+			4'b1000: bit_willbe_slv_rx = 0;
+			4'b1001: bit_willbe_slv_rx = 0;
+			4'b1010: bit_willbe_slv_rx = 0;
+			4'b1011: bit_willbe_slv_rx = 0;
+			4'b1100: bit_willbe_slv_rx = 0;
+			4'b1101: bit_willbe_slv_rx = 0;
+			4'b1110: bit_willbe_slv_rx = 0;
+			4'b1111: bit_willbe_slv_rx = 0;
 			default: bit_willbe_slv_rx = 0;
 
 		endcase
@@ -211,21 +223,24 @@ module i2c_passthru_rxtx_ctrl(
 		//if( i_rstn) begin
 		//if( cha_start || chb_start ) begin
 		if( !(cha_start || chb_start) ) begin
-			state        <= nxt_state;
-			bit_cnt      <= nxt_bit_cnt;
-			//o_slv_is_rx  <= nxt_slv_is_rx;
-			first_byte_n <= nxt_first_byte_n;
-			read_mode    <= nxt_read_mode;
-			ack_failed   <= nxt_ack_failed;
+			state           <= nxt_state           ;
+			bit_cnt         <= nxt_bit_cnt         ;
+			first_byte_n    <= nxt_first_byte_n    ;
+			read_mode       <= nxt_read_mode       ;
+			ack_failed      <= nxt_ack_failed      ;
+			slv_on_mst_side <=  nxt_slv_on_mst_side;
+
 		
 		end 
 		else begin
-			state        <= ST_MST_RX_WAIT;
-			bit_cnt      <= 4'h0;
-			//o_slv_is_rx  <= 1'b0;
-			first_byte_n <= 1'b0;
-			read_mode    <= 1'b0;
-			ack_failed   <= 1'b0;
+			state           <= ST_MST_RX_WAIT;
+			bit_cnt         <= 4'h0;
+			first_byte_n    <= 1'b0;
+			read_mode       <= 1'b0;
+			ack_failed      <= 1'b0;
+			slv_on_mst_side <=  1'b0;
+			
+			
 		end
 
 	end

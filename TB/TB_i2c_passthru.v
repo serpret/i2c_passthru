@@ -6,39 +6,76 @@
 `define MON_EVENT_S 2'b11
 
 
-
+//`define FAST_F_REF   //uncomment to use faster FAST_F_REF and i_clk
 
 
 module tb();
 	//parameters
 	
-	localparam NS_TB_TIMEOUT      =   300_000_000;
-	localparam NS_T_BUS_STUCK_MAX =   200_000_000;
-	localparam NS_T_BUS_STUCK_MIN =    25_000_000;
+	localparam NS_TB_LONG_TIMEOUT  =   300_000_000;
+	localparam NS_TB_NORM_TIMEOUT  =     4_000_000;
+	localparam NS_T_BUS_STUCK_MAX  =   200_000_000;
+	localparam NS_T_BUS_STUCK_MIN  =    25_000_000;
 	
 	localparam NS_T_HI_MAX      =  700000;
 	localparam NS_T_HI_MIN      =   50000;
-	localparam NS_T_LOW_MIN     =    4000;
+	localparam NS_T_LOW_MIN     =    3500;
+
 	localparam NS_T_LOW_MAX     =    6000;
+	localparam NS_T_SU_DAT_MIN  =     250;
 	
+	`ifdef FAST_F_REF /////////////////////////////////
+	//	always #50         f_ref_unsync     = ~f_ref_unsync; //period 100ns
+
+		localparam INFILTER_NUM_CLKS_WIDTH     =  5;
+		localparam INFILTER_NUM_CLKS_HI2LO_SDA = 12;
+		localparam INFILTER_NUM_CLKS_LO2HI_SDA = 12;
+		localparam INFILTER_NUM_CLKS_HI2LO_SCL =  4;
+		localparam INFILTER_NUM_CLKS_LO2HI_SCL = 20;
+
+		localparam F_REF_T_R                    = 20;
+		localparam F_REF_T_SU_DAT               = 15;
+		localparam F_REF_T_HI                   =500;  //max value (timeout)
+		localparam F_REF_T_LOW                  = 40;
 	
-	localparam F_REF_T_R                    = 4;
-	localparam F_REF_T_SU_DAT               = 2;
-	localparam F_REF_T_HI                   =50;  //max value (timeout)
-	localparam F_REF_T_LOW                  = 5;
+		localparam WIDTH_F_REF_T_R              = 5;
+		localparam WIDTH_F_REF_T_SU_DAT         = 4;
+		localparam WIDTH_F_REF_T_HI             = 9;
+		localparam WIDTH_F_REF_T_LOW            = 6;
+	
+	`else /////////////////////////////////////////////
+	
+		localparam INFILTER_NUM_CLKS_WIDTH      = 3;
+		
+		localparam INFILTER_NUM_CLKS_HI2LO_SDA  = 1;
+		localparam INFILTER_NUM_CLKS_LO2HI_SDA  = 1;
+		localparam INFILTER_NUM_CLKS_HI2LO_SCL  = 0;
+		localparam INFILTER_NUM_CLKS_LO2HI_SCL  = 2;
+	
+		localparam F_REF_T_R                    = 4;
+		localparam F_REF_T_SU_DAT               = 2;
+		localparam F_REF_T_HI                   =50;  //max value (timeout)
+		localparam F_REF_T_LOW                  = 4;
+	
+		localparam WIDTH_F_REF_T_R              = 3;
+		localparam WIDTH_F_REF_T_SU_DAT         = 2;
+		localparam WIDTH_F_REF_T_HI             = 6;
+		localparam WIDTH_F_REF_T_LOW            = 3;
+
+	`endif ////////////////////////////////////////////
+	
+	localparam INFILTER_EN_2FF_SYNC         = 0;
 	localparam F_REF_SLOW_T_STUCK_MAX       = 2;
-	localparam WIDTH_F_REF_T_R              = 3;
-	localparam WIDTH_F_REF_T_SU_DAT         = 2;
-	localparam WIDTH_F_REF_T_HI             = 6;
-	localparam WIDTH_F_REF_T_LOW            = 3;
 	localparam WIDTH_F_REF_SLOW_T_STUCK_MAX = 2;
+	
+
 	
 	//tb signals
 	reg f_ref_unsync      ;
 	reg f_ref_slow_unsync ;
 	
 	reg [255:0] current_test_name;
-	reg [12:0] current_test_pass_config;
+	reg [10:0] current_test_pass_config;
 	
 
 	reg [31:0] time_mst_rise        ;
@@ -177,10 +214,20 @@ module tb();
 	
 
 
-	////
+	
+	`ifdef FAST_F_REF /////////////////////////////////
+		always #5          i_clk            = ~i_clk;        //period 10ns
+		always #50         f_ref_unsync     = ~f_ref_unsync; //period 100ns
+	
+	`else /////////////////////////////////////////////
+		always #125        i_clk            = ~i_clk;        //period 250ns
+		always #500        f_ref_unsync     = ~f_ref_unsync; //period 1us
+	
+	`endif ////////////////////////////////////////////
 
-	always #160        i_clk            = ~i_clk; //160 ->
-	always #500        f_ref_unsync     = ~f_ref_unsync;    
+
+	
+	
 	always #8_000_000 f_ref_slow_unsync = ~f_ref_slow_unsync; // 16ms period. 
 	
 	always @(posedge i_clk) begin
@@ -191,7 +238,13 @@ module tb();
 	
 	i2c_passthru #(
 	
-		.REG_OUTPUTS                  (0  ),
+		.INFILTER_EN_2FF_SYNC         (INFILTER_EN_2FF_SYNC        ),
+		.INFILTER_NUM_CLKS_WIDTH      (INFILTER_NUM_CLKS_WIDTH     ),
+		.INFILTER_NUM_CLKS_HI2LO_SDA  (INFILTER_NUM_CLKS_HI2LO_SDA ),
+		.INFILTER_NUM_CLKS_LO2HI_SDA  (INFILTER_NUM_CLKS_LO2HI_SDA ),
+		.INFILTER_NUM_CLKS_HI2LO_SCL  (INFILTER_NUM_CLKS_HI2LO_SCL ),
+		.INFILTER_NUM_CLKS_LO2HI_SCL  (INFILTER_NUM_CLKS_LO2HI_SCL ),
+		.REG_OUTPUTS                  (0                           ),
 		.F_REF_T_R                    (F_REF_T_R                   ),
 		.F_REF_T_SU_DAT               (F_REF_T_SU_DAT              ),
 		.F_REF_T_HI                   (F_REF_T_HI                  ),
@@ -305,17 +358,18 @@ module tb();
 		.o_idle                  (drv_slv_idle                  )
 	);
 	
-	
+
 
 	mon_i2c u_monitor_mst(
+		.fail_substr( "master timing fail"),
 		.i_scl( test_cha_mst ? cha_scl : chb_scl),
 		.i_sda( test_cha_mst ? cha_sda : chb_sda),
 		
 		.i_en_timing_check( mon_mst_en_timing_check),
 		.i_clr_all        ( mon_mst_clr_all        ),
 		
-		.i_t_low          ( 4700                   ),
-		.i_t_su           (  250                   ),
+		.i_t_low          (  NS_T_LOW_MIN           ),
+		.i_t_su           (  NS_T_SU_DAT_MIN        ),
 		
 		.o_num_events      (mon_mst_num_events      ), 
 		.o_events          (mon_mst_events          ),
@@ -324,14 +378,15 @@ module tb();
 	
 	
 	mon_i2c u_monitor_slv(
+		.fail_substr( "slave timing fail"),
 		.i_scl( test_cha_mst ? chb_scl : cha_scl),
 		.i_sda( test_cha_mst ? chb_sda : cha_sda),
 		
 		.i_en_timing_check( mon_slv_en_timing_check),
 		.i_clr_all        ( mon_slv_clr_all        ),
 		
-		.i_t_low          ( 4700                   ),
-		.i_t_su           (  250                   ),
+		.i_t_low          (  NS_T_LOW_MIN           ),
+		.i_t_su           (  NS_T_SU_DAT_MIN        ),
 		
 		.o_num_events      (mon_slv_num_events      ), 
 		.o_events          (mon_slv_events          ),
@@ -372,15 +427,30 @@ module tb();
 		end
 	end
 	
-	//always @( o_cha_scl, o_chb_scl, drv_mst_scl) begin
+					//time_mst_rise          =   50;
+					//time_mst_fall          =   50;
+					//time_mst_sda_ref_rise  =  100;
+					//time_mst_sda_ref_fall  =   0;	
+	//always @(*) begin
+	//	if( test_cha_mst) begin
+	//		if( o_cha_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_rise) 1'b1;
+	//		else                         drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_fall) 1'b0;
+	//	end
+	//	else begin
+	//		if( o_chb_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_rise) 1'b1;
+	//		else                         drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_fall) 1'b0;
+	//	end
+	//end
+	
+
 	always @(*) begin
 		if( test_cha_mst) begin
-			if( o_cha_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_rise) 1'b1;
-			else                         drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_fall) 1'b0;
+			if( o_cha_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <=  1'b1;
+			else                         drv_mst_scl_sda_chng_ref <=  1'b0;
 		end
 		else begin
-			if( o_chb_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_rise) 1'b1;
-			else                         drv_mst_scl_sda_chng_ref <= #(time_mst_sda_ref_fall) 1'b0;
+			if( o_chb_scl & drv_mst_scl) drv_mst_scl_sda_chng_ref <=  1'b1;
+			else                         drv_mst_scl_sda_chng_ref <=  1'b0;
 		end
 	end
 	
@@ -746,15 +816,37 @@ module tb();
 		begin
 			current_test_name = "i2c_protocol_test";
 			
-			//current_test_pass_config = {1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0,1'b0, 2'h0, 2'h0};
-			current_test_pass_config = 13'b000000000_00_00;
-			mst_dat  = i2c_protocol_test_setaddr( current_test_pass_config[0 +:2]);
-			slv_dat  = i2c_protocol_test_setaddr( current_test_pass_config[2 +:2]);
+			
+			current_test_pass_config = 11'b0000000_00_00;
+			i2c_protocol_test_pass_vectorized_conf( current_test_pass_config);
+			
+			current_test_pass_config = 11'b1000000_00_00;
+			while ( |current_test_pass_config) begin 
+				i2c_protocol_test_pass_vectorized_conf( current_test_pass_config);
+				current_test_pass_config = current_test_pass_config >> 1;
+			end
+	
+		
+		end
+	endtask
+	
+	
+	
+	task i2c_protocol_test_pass_vectorized_conf;
+		input [10:0] conf;
+		
+		reg [8:0] mst_dat;
+		reg [8:0] slv_dat;
+		begin
+		
+		
+			mst_dat  = i2c_protocol_test_setaddr( conf[0 +:2]);
+			slv_dat  = i2c_protocol_test_setaddr( conf[2 +:2]);
 			
 			//i2c_protocol_test_pass(0,0,0,0,0,0,0,0,0, 9'h1_55, 9'h0_AA);
 			i2c_protocol_test_pass(
-				current_test_pass_config[ 12],
-				current_test_pass_config[ 11],
+				//current_test_pass_config[ 12],
+				//current_test_pass_config[ 11],
 				current_test_pass_config[ 10],
 				current_test_pass_config[ 09],
 				current_test_pass_config[ 08],
@@ -765,44 +857,74 @@ module tb();
 				mst_dat[8:0],
 				slv_dat[8:0]
 			);
-
+	
 		end
-
 	endtask
 	
+	//start_time = $realtime;
+	//		while( ! all_idle() && (time_elapsed( start_time) < NS_TB_LONG_TIMEOUT)  ) begin
+	//			@(posedge i_clk);
+	//		end
+	//		
+	//		if( ! all_idle() ) tb_timeout_fail();
+	//		
+	//		
+	//		while( !drv_mst_idle || !drv_slv_idle) begin
+	//			@(posedge i_clk);
+	//		end
+	//		$display("---- mid wait current_test_pass_config: %b ", current_test_pass_config);
+	//
+	//		//wait for all lines to release
+	//		while( !cha_scl || !cha_sda || !chb_scl || !chb_sda) begin
+	//			@(posedge i_clk);
+	//		end
 	
-	
-	function [17:0] i2cbyte_to_i2c_event;
-		input [8:0] data;
+	function all_idle;
+		input nc;
 		begin
-			repeat(9) begin
-				i2cbyte_to_i2c_event = i2cbyte_to_i2c_event << 2;
-				i2cbyte_to_i2c_event[1:0] = data[8] ? `MON_EVENT_1 : `MON_EVENT_0;
-				data = data << 1;
-			end
+			all_idle  = drv_mst_idle && drv_slv_idle && cha_scl && cha_sda && chb_scl && chb_sda;
 		end
 	endfunction
+	
+	
+	task tb_timeout_fail;
+		input [511:0] substr_err;
+		begin
+				$display("-------  Failed test: %s ------", current_test_name);
+				$display("-------  subpass config: %b ------", current_test_pass_config);
+				$display("    time: %t", $realtime);
+				$display("    %s", str_lalign(substr_err) );
+				$display("    testbench timeout occured");
+			failed = 1;
+		end
+	endtask
 		
 	
-	
+
 	
 	task i2c_protocol_test_pass;
 		input en_rst_between_tran;
 		input en_mst_time_violations;
 		input en_slv_time_violations;
-		input en_no_stops;
+		//input en_no_stops;
 		input en_clk_stretch;
 		input en_long_risefall_time;
 		input en_chb_is_mst;
-		input en_bit_violation; //perform slave bit violations on writes, perform master bit violations on reads
+		//input en_bit_violation; //perform slave bit violations on writes, perform master bit violations on reads
 		input en_mst_fast;
 		input [8:0] mst_dat;
 		input [8:0] slv_dat;
-
+		//7+(2*2) = 11
+	
 		reg [31:0] expctd_cnt_idle_timeout;
 		reg [31:0] expctd_cnt_bit_violation;
 		reg [31:0] expctd_cnt_cha_stuck; 
 		reg [31:0] expctd_cnt_chb_stuck;
+		
+		reg do_event_check_mst;
+		reg do_event_check_slv;
+		realtime start_time;
+
 		begin
 	
 			test_cha_mst = ~en_chb_is_mst;
@@ -814,7 +936,7 @@ module tb();
 			//	//#NS_T_HI_MIN;
 			//	#NS_T_LOW_MAX;
 			//end
-			
+			//$display("---- current test pass config: %b ", current_test_pass_config);
 			
 			case( {en_mst_fast, en_mst_time_violations})
 				2'b00: mon_mst_en_timing_check = 1;
@@ -830,8 +952,21 @@ module tb();
 				2'b11: mon_slv_en_timing_check = 0;
 			endcase
 			
+			case( {en_mst_time_violations})
+				1'b0:do_event_check_mst = 1;
+				1'b1:do_event_check_mst = 0;
+			endcase
 			
-			drv_mst_timing = en_mst_fast ? 32'd1000: 32'd5000;
+			case( {en_slv_time_violations})
+				1'b0:do_event_check_slv = 1;
+				1'b1:do_event_check_slv = 0;
+			endcase
+			
+			
+			
+			//$display("---- mon_mst_en_timing_check: %b ", mon_mst_en_timing_check);
+			
+			drv_mst_timing = en_mst_fast ? 32'd1500: 32'd5000;
 			drv_slv_timing = 32'd5000;
 			
 			drv_slv_clock_low_by8 = en_clk_stretch ;
@@ -859,17 +994,17 @@ module tb();
 				end
 				
 				2'b10: begin
-					time_mst_rise          = 100;
-					time_mst_fall          = 100;
-					time_mst_sda_ref_rise  = 200;
+					time_mst_rise          =   50;
+					time_mst_fall          =   50;
+					time_mst_sda_ref_rise  =  100;
 					time_mst_sda_ref_fall  =   0;
 				end
 				
 				2'b11: begin
 					time_mst_rise         = 1000;
 					time_mst_fall         = 1000;
-					time_mst_sda_ref_rise = 1100;
-					time_mst_sda_ref_fall =  900;
+					time_mst_sda_ref_rise = 1050;
+					time_mst_sda_ref_fall =  950;
 				end
 	
 			endcase
@@ -891,22 +1026,21 @@ module tb();
 				end
 				
 				2'b10: begin
-					time_slv_rise          = 100;
-					time_slv_fall          = 100;
-					time_slv_sda_ref_rise  = 200;
+					time_slv_rise          =  50;
+					time_slv_fall          =  50;
+					time_slv_sda_ref_rise  = 100;
 					time_slv_sda_ref_fall  =   0;
 				end
 				
 				2'b11: begin
 					time_slv_rise         = 1000;
 					time_slv_fall         = 1000;
-					time_slv_sda_ref_rise = 1100;
-					time_slv_sda_ref_fall =  900;
+					time_slv_sda_ref_rise = 1050;
+					time_slv_sda_ref_fall =  950;
 				end
 	
 			endcase
 			
-			drv_mst_dont_stop = en_no_stops;
 	
 			
 			
@@ -916,6 +1050,8 @@ module tb();
 				rst_uut();
 				#NS_T_LOW_MAX;
 			end
+			
+			drv_mst_dont_stop = 0;
 			
 			init_drv_mst_wrbytes();
 			init_drv_slv_wrbytes();
@@ -941,58 +1077,56 @@ module tb();
 			#1;
 			drv_mst_start                  = 1'b0    ;
 			drv_slv_start                  = 1'b0    ;
-			//@(posedge drv_mst_idle);
+			
 			
 			//wait for mst and slv to be idle
-			while( !drv_mst_idle || !drv_slv_idle) begin
+			start_time = $realtime;
+			while( ! all_idle(0) && (time_elapsed( start_time) < NS_TB_NORM_TIMEOUT)  ) begin
 				@(posedge i_clk);
 			end
 			
-			//wait for all lines to release
-			while( !cha_scl || !cha_sda || !chb_scl || !chb_sda) begin
-				@(posedge i_clk);
+			if( ! all_idle(0) ) tb_timeout_fail("write address only, no ack, master side");
+			
+			
+			//begin checks
+			if( do_event_check_mst) begin
+				check_expctd_i2c_events( 
+					"write address only, no ack, master side",
+					32'd11 ,                     //	.num_expctd
+					mon_mst_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {mst_dat[8:2], 1'b0, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_mst_events               //	.actual
+				);                               //);
 			end
 			
-			if(en_no_stops) 
-				#NS_T_HI_MAX;
-			#1;
+			
+			if( do_event_check_slv) begin
+				check_expctd_i2c_events( 
+					"write address only, no ack, slave side",
+					32'd11 ,                     //	.num_expctd
+					mon_slv_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {slv_dat[8:2], 1'b0, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_slv_events               //	.actual
+				);                               //);
+			end
 			
 			
 			
-			check_expctd_i2c_events( 
-				"write address only, no ack, master side",
-				32'd11 ,                     //	.num_expctd
-				mon_mst_num_events,          //	.num_actual
-				{                            //	.expctd({
-					`MON_EVENT_S,                                           
-					i2cbyte_to_i2c_event( {mst_dat[8:2], 1'b0, 1'b1} ),    
-					`MON_EVENT_P                                            
-				},                                                         
-				mon_mst_events               //	.actual
-			);                               //);
-			
-			
-			check_expctd_i2c_events( 
-				"write address only, no ack, slave side",
-				32'd11 ,                     //	.num_expctd
-				mon_slv_num_events,          //	.num_actual
-				{                            //	.expctd({
-					`MON_EVENT_S,                                           
-					i2cbyte_to_i2c_event( {slv_dat[8:2], 1'b0, 1'b1} ),    
-					`MON_EVENT_P                                            
-				},                                                         
-				mon_slv_events               //	.actual
-			);                               //);
-			
-			
-			
-			expctd_cnt_idle_timeout = en_no_stops ? 1: 0;
+			//expctd_cnt_idle_timeout =  0;
 			//expctd_cnt_bit_violation
 			//expctd_cnt_cha_stuck; 
 			//expctd_cnt_chb_stuck;
 			
 			check_expctd_opt_events(
-				expctd_cnt_idle_timeout, 0, 0, 0,
+				0, 0, 0, 0,
 				
 				mon_opt_cnt_idle_timeout, 
 				mon_opt_cnt_bit_violation, 
@@ -1001,97 +1135,111 @@ module tb();
 			);
 			
 			
+			failed = failed | mon_mst_timing_check_err | mon_slv_timing_check_err;
 			
-			//---- write address and read 1 byte ----------------
 			
-			rst_all_mon();
-			if(en_rst_between_tran) begin
-				rst_uut();
-				#NS_T_LOW_MAX;
-			end
 			
-			init_drv_mst_wrbytes();
-			init_drv_slv_wrbytes();
-			
-			drv_mst_stop_after_byte        = 4'b1    ;
-			drv_mst_extra_stop_after_byte  = 4'hF    ;
-			drv_mst_extra_start_after_byte = 4'hF    ;
-			
-			drv_mst_wrbyte_0= { mst_dat[8:2], 1'b0, 1'b1};
-			//drv_mst_wrbyte_1= {       8'h55, 1'b1};
-			
+			////----  address (read) and read 1 byte ----------------
+			//// violate setting: master will violate in middle of slave read
+			//// (this shouldn't be treated as a violate, since the master
+			////  side might have another slave with same address)
+			//
+			//rst_all_mon();
+			//if(en_rst_between_tran) begin
+			//	rst_uut();
+			//	#NS_T_LOW_MAX;
+			//end
+			//
+			//init_drv_mst_wrbytes();
+			//init_drv_slv_wrbytes();
+			//
+			//drv_mst_stop_after_byte        = 4'b1    ;
+			//drv_mst_extra_stop_after_byte  = 4'hF    ;
+			//drv_mst_extra_start_after_byte = 4'hF    ;
+			//
+			//drv_mst_wrbyte_0= { mst_dat[8:2], 1'b0, 1'b1};
+			//
+			//drv_mst_wrbyte_1= {       8'hFF, 1'b0};
+			//
+			//
+			//drv_slv_stop_after_byte        = 4'b1    ;
+			//drv_slv_extra_stop_after_byte  = 4'hF    ;
+			//drv_slv_extra_start_after_byte = 4'hF    ;
+			//
+			//drv_slv_wrbyte_0= { 7'hFF, 1'b1 , 1'b1};
+			//drv_slv_wrbyte_1= { slv_dat[8:1], 1'b1};
+			//
+			//
+			//drv_mst_start                  = 1'b1    ;
+			//drv_slv_start                  = 1'b1    ;
+			//#1;
+			//drv_mst_start                  = 1'b0    ;
+			//drv_slv_start                  = 1'b0    ;
+			////@(posedge drv_mst_idle);
+			//
+			////wait for mst and slv to be idle
+			//while( !drv_mst_idle || !drv_slv_idle) begin
+			//	@(posedge i_clk);
+			//end
+			//
+			////wait for all lines to release
+			//while( !cha_scl || !cha_sda || !chb_scl || !chb_sda) begin
+			//	@(posedge i_clk);
+			//end
+			//
+			//
+			//
+			//
+			//
+			//expctd_mst_byte[0] 
+			//
+			//expctd_mst_byte[1] = {       8'hFF, 1'b0};
+			//
+			//expctd_slv_byte
+			//
+			//check_expctd_i2c_events( 
+			//	"write address read 1 byte, master side",
+			//	32'd11 ,                     //	.num_expctd
+			//	mon_mst_num_events,          //	.num_actual
+			//	{                            //	.expctd({
+			//		`MON_EVENT_S,                                           
+			//		i2cbyte_to_i2c_event( {mst_dat[8:2], 1'b0, 1'b1} ),    
+			//		`MON_EVENT_P                                            
+			//	},                                                         
+			//	mon_mst_events               //	.actual
+			//);                               //);
+			//
+			//
+			//check_expctd_i2c_events( 
+			//	"write address read 1 byte, slave side",
+			//	32'd11 ,                     //	.num_expctd
+			//	mon_slv_num_events,          //	.num_actual
+			//	{                            //	.expctd({
+			//		`MON_EVENT_S,                                           
+			//		i2cbyte_to_i2c_event( {slv_dat[8:2], 1'b0, 1'b1} ),    
+			//		`MON_EVENT_P                                            
+			//	},                                                         
+			//	mon_slv_events               //	.actual
+			//);                               //);
+			//
+			//
+			//
+			////expctd_cnt_idle_timeout =  0;
+			////expctd_cnt_bit_violation
+			////expctd_cnt_cha_stuck; 
+			////expctd_cnt_chb_stuck;
+			//
+			//check_expctd_opt_events(
+			//	0, 0, 0, 0,
+			//	
+			//	mon_opt_cnt_idle_timeout, 
+			//	mon_opt_cnt_bit_violation, 
+			//	mon_opt_cnt_cha_stuck, 
+			//	mon_opt_cnt_chb_stuck
+			//);
+			//
+			//failed = failed | mon_mst_timing_check_err | mon_slv_timing_check_err;
 	
-			drv_slv_stop_after_byte        = 4'b0    ;
-			drv_slv_extra_stop_after_byte  = 4'hF    ;
-			drv_slv_extra_start_after_byte = 4'hF    ;
-			
-			drv_slv_wrbyte_0= { 7'hFF, 1'b1, 1'b1};
-			//drv_slv_wrbyte_1= {       8'hFF, 1'b0};
-			
-			
-			drv_mst_start                  = 1'b1    ;
-			drv_slv_start                  = 1'b1    ;
-			#1;
-			drv_mst_start                  = 1'b0    ;
-			drv_slv_start                  = 1'b0    ;
-			//@(posedge drv_mst_idle);
-			
-			//wait for mst and slv to be idle
-			while( !drv_mst_idle || !drv_slv_idle) begin
-				@(posedge i_clk);
-			end
-			
-			//wait for all lines to release
-			while( !cha_scl || !cha_sda || !chb_scl || !chb_sda) begin
-				@(posedge i_clk);
-			end
-			
-			if(en_no_stops) 
-				#NS_T_HI_MAX;
-			#1;
-			
-			
-			
-			check_expctd_i2c_events( 
-				"write address read 1 byte, master side",
-				32'd11 ,                     //	.num_expctd
-				mon_mst_num_events,          //	.num_actual
-				{                            //	.expctd({
-					`MON_EVENT_S,                                           
-					i2cbyte_to_i2c_event( {mst_dat[8:2], 1'b0, 1'b1} ),    
-					`MON_EVENT_P                                            
-				},                                                         
-				mon_mst_events               //	.actual
-			);                               //);
-			
-			
-			check_expctd_i2c_events( 
-				"write address read 1 byte, slave side",
-				32'd11 ,                     //	.num_expctd
-				mon_slv_num_events,          //	.num_actual
-				{                            //	.expctd({
-					`MON_EVENT_S,                                           
-					i2cbyte_to_i2c_event( {slv_dat[8:2], 1'b0, 1'b1} ),    
-					`MON_EVENT_P                                            
-				},                                                         
-				mon_slv_events               //	.actual
-			);                               //);
-			
-			
-			
-			expctd_cnt_idle_timeout = en_no_stops ? 1: 0;
-			//expctd_cnt_bit_violation
-			//expctd_cnt_cha_stuck; 
-			//expctd_cnt_chb_stuck;
-			
-			check_expctd_opt_events(
-				expctd_cnt_idle_timeout, 0, 0, 0,
-				
-				mon_opt_cnt_idle_timeout, 
-				mon_opt_cnt_bit_violation, 
-				mon_opt_cnt_cha_stuck, 
-				mon_opt_cnt_chb_stuck
-			);
 			
 		
 		end
@@ -1099,11 +1247,34 @@ module tb();
 	endtask
 	
 	
+
+	
+	function [17:0] i2cbyte_to_i2c_event;
+		input [8:0] data;
+		
+		
+		begin
+			repeat(9) begin
+				i2cbyte_to_i2c_event = i2cbyte_to_i2c_event << 2;
+				i2cbyte_to_i2c_event[1:0] = data[8] ? `MON_EVENT_1 : `MON_EVENT_0;
+				data = data << 1;
+			end
+		end
+	endfunction
+	
+
+	
 	function [511:0] str_lalign;
 		input [511:0] str;
 		begin
+			//$display("str_lalign debug str[511 -:8]: %h", str_lalign[511 -:8]);
 			str_lalign = str;
-			while( str_lalign[ 511 -:8] == 8'h00) begin
+			while( str_lalign[ 511 -:8] == 8'h00  ||
+			       str_lalign[ 511 -:8] == 8'h10  ||
+			       str_lalign[ 511 -:8] === 8'hXX ||
+			       str_lalign[ 511 -:8] === 8'hZZ 
+			
+			) begin
 				str_lalign = str_lalign << 8;
 			end
 		end
@@ -1123,7 +1294,7 @@ module tb();
 		
 			if( num_expctd !== num_actual) begin
 				$display("-------  Failed test: %s ------", current_test_name);
-				$display("-------  subpass config: %h ------", current_test_pass_config);
+				$display("-------  subpass config: %b ------", current_test_pass_config);
 				$display("    time: %t", $realtime);
 				$display("    %s", str_lalign(substr_err) );
 				$display("    number of expected events dont match actual");
@@ -1137,7 +1308,7 @@ module tb();
 			
 				if( expctd[ 2*i +: 2] !== actual[ 2*i +: 2]) begin
 					$display("-------  Failed test: %s ------", current_test_name);
-					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("-------  subpass config: %b ------", current_test_pass_config);
 					$display("    time: %t", $realtime);
 					$display("    %s", str_lalign(substr_err));
 					$display("    expected events don't match actual");
@@ -1168,7 +1339,7 @@ module tb();
 		
 				if( expctd_cnt_idle_timeout !== actual_cnt_idle_timeout) begin
 					$display("-------  Failed test: %s ------", current_test_name);
-					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("-------  subpass config: %b ------", current_test_pass_config);
 					$display("    time: %t", $realtime);
 					$display("    optional idle timeout count mismatch");
 					$display("    expected: %d", expctd_cnt_idle_timeout);
@@ -1178,7 +1349,7 @@ module tb();
 				
 				if( expctd_cnt_bit_violation !== actual_cnt_bit_violation) begin
 					$display("-------  Failed test: %s ------", current_test_name);
-					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("-------  subpass config: %b ------", current_test_pass_config);
 					$display("    time: %t", $realtime);
 					$display("    optional idle timeout count mismatch");
 					$display("    expected: %d", expctd_cnt_idle_timeout);
@@ -1188,7 +1359,7 @@ module tb();
 				
 				if( expctd_cnt_cha_stuck !== actual_cnt_cha_stuck) begin
 					$display("-------  Failed test: %s ------", current_test_name);
-					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("-------  subpass config: %b ------", current_test_pass_config);
 					$display("    time: %t", $realtime);
 					$display("    optional idle timeout count mismatch");
 					$display("    expected: %d", expctd_cnt_idle_timeout);
@@ -1198,7 +1369,7 @@ module tb();
 				
 				if( expctd_cnt_chb_stuck !== actual_cnt_chb_stuck) begin
 					$display("-------  Failed test: %s ------", current_test_name);
-					$display("-------  subpass config: %h ------", current_test_pass_config);
+					$display("-------  subpass config: %b ------", current_test_pass_config);
 					$display("    time: %t", $realtime);
 					$display("    optional idle timeout count mismatch");
 					$display("    expected: %d", expctd_cnt_idle_timeout);
@@ -1332,23 +1503,24 @@ module driver_i2c(
 	reg [3:0] bit_cnt;
 	reg [3:0] byte_cnt;
 	reg [8:0] cur_byte; 
+	reg       dont_stop;
 	//reg       ref_scl_for_sda;
 	wire final_byte;
 	wire stop_byte;
 	wire start_byte;
-	wire last_bit;
-	wire second_to_last_bit;
-	wire nxt_bit_ctrl;
+	wire cur_bit_is_last;
+	wire cur_bit_is_almost_last;
+	wire nxt_bit_is_ctrl;
 
 	
 	assign final_byte = (i_stop_after_byte       ) === byte_cnt;
 	assign  stop_byte = (i_extra_start_after_byte) === byte_cnt && ( stop_byte !== 4'hF);
 	assign start_byte = (i_extra_stop_after_byte ) === byte_cnt && (start_byte !== 4'hF);
 	
-	assign last_bit           = (4'h9 === bit_cnt);
-	assign second_to_last_bit = (4'h8 === bit_cnt);
+	assign cur_bit_is_last           = (4'h9 === bit_cnt);
+	assign cur_bit_is_almost_last    = (4'h8 === bit_cnt);
 	
-	assign nxt_bit_ctrl = (final_byte || stop_byte || start_byte) && last_bit;
+	assign nxt_bit_is_ctrl = (final_byte || stop_byte || start_byte) && cur_bit_is_last;
 
 	initial begin
 		o_idle = 1'b1;
@@ -1365,6 +1537,7 @@ module driver_i2c(
 		//ref_scl_for_sda = 1'b1;
 		o_scl = 1'b1;
 		o_sda = 1'b1;
+		dont_stop = i_dont_stop;
 		
 		if( i_is_mstr) begin
 			if( i_dont_start) begin
@@ -1386,7 +1559,6 @@ module driver_i2c(
 			if( i_clock_low_by8) o_scl <= #(8*i_timing) 1'b1;
 			else                 o_scl <= #(  i_timing) 1'b1;
 		end
-
 	end
 	
 	//if i_clock_low_by8 and slave that means we are clock stretching
@@ -1400,7 +1572,7 @@ module driver_i2c(
 	always @(posedge i_scl) begin
 		if( !o_idle) begin
 			if(i_is_mstr) begin
-				if( nxt_bit_ctrl) begin //control event bit
+				if( nxt_bit_is_ctrl) begin //control event bit
 					if(      final_byte)               o_scl  =               1'b1;   //do nothing
 					else if ( stop_byte && start_byte) o_scl <= #(3*i_timing) 1'b0;
 					else if ( stop_byte || start_byte) o_scl <= #(2*i_timing) 1'b0;
@@ -1416,9 +1588,9 @@ module driver_i2c(
 	//byte count and bit count
 	always @( posedge i_scl_sda_chng_ref) begin
 		if( !o_idle) begin
-			if( last_bit ) begin
+			if( cur_bit_is_last ) begin
 			
-				if( nxt_bit_ctrl) bit_cnt <= 4'h0;
+				if( nxt_bit_is_ctrl) bit_cnt <= 4'h0;
 				else              bit_cnt <= 4'h1;
 				
 				byte_cnt <= byte_cnt + 1'b1;
@@ -1434,7 +1606,7 @@ module driver_i2c(
 	//handle cur_byte
 	always @( posedge i_scl_sda_chng_ref) begin
 		if( !o_idle) begin
-			if( second_to_last_bit) begin
+			if( cur_bit_is_almost_last) begin
 				case( byte_cnt)
 					0  : cur_byte <= i_wrbyte_1 ;
 					1  : cur_byte <= i_wrbyte_2 ;
@@ -1454,7 +1626,7 @@ module driver_i2c(
 					15 : cur_byte <= cur_byte; //last byte. ignore.
 				endcase
 			end
-			else if( !nxt_bit_ctrl) begin
+			else if( !nxt_bit_is_ctrl) begin
 				cur_byte <= (cur_byte[7:0] << 1);
 			end
 		end
@@ -1462,104 +1634,197 @@ module driver_i2c(
 	end
 	
 	
+	////handle o_sda data transitions 
+	//always @( i_scl_sda_chng_ref) begin
+	//	if( !o_idle) begin
+	//		if( i_sda_violate) begin
+	//			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+	//				if( nxt_bit_is_ctrl ) begin //control event bit
+	//					if( i_is_mstr) begin
+	//						if(      final_byte) begin
+	//							if( dont_stop) o_sda <=           1'b1;
+	//							else           o_sda <= #i_timing 1'b1;
+	//							o_idle <= #(2*i_timing) 1'b1;
+	//						end
+	//						else if ( stop_byte && start_byte) begin
+	//							
+	//							o_sda <= #(  i_timing) 1'b1;
+	//							o_sda <= #(2*i_timing) 1'b0;
+	//						end
+	//						else if ( stop_byte )               o_sda <= #i_timing 1'b1;
+	//						else if ( start_byte)               o_sda <= #i_timing 1'b0;
+	//					end
+	//					else begin //not master
+	//						if(  final_byte) o_idle <= 1'b1;
+	//						o_sda <= 1'b1;
+	//					end
+	//					
+	//				end
+	//				else begin 
+	//					o_sda <= cur_byte[8];
+	//				end
+	//			end
+	//			else begin // falling edge of reference scl
+	//			
+	//					o_sda <= ~o_sda;
+	//					
+	//			end
+	//		end
+	//		else begin // if( !i_sda_violate)
+	//			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+	//				//o_sda <= o_sda; //no change, ignore
+	//				if( nxt_bit_is_ctrl ) begin //control event bit
+	//					if( i_is_mstr) begin
+	//						if(      final_byte) begin
+	//							
+	//							if( dont_stop) o_sda <=           1'b1;
+	//							else           o_sda <= #i_timing 1'b1;
+	//							
+	//							o_idle <= #(2*i_timing) 1'b1;
+	//							//o_sda <= #(2*i_timing) 1'b1;
+	//							//o_idle <= #(3*i_timing) 1'b1;
+	//						end
+	//						else if ( stop_byte && start_byte) begin
+	//							
+	//							o_sda <= #(  i_timing) 1'b1;
+	//							o_sda <= #(2*i_timing) 1'b0;
+	//						end
+	//						else if ( stop_byte )               o_sda <= #i_timing 1'b1;
+	//						else if ( start_byte)               o_sda <= #i_timing 1'b0;
+	//					end
+	//					else begin //not master
+	//						if(  final_byte) o_idle <= 1'b1;
+	//						o_sda <= 1'b1;
+	//					end
+	//					
+	//				end
+	//				
+	//			end
+	//			else begin // falling edge of reference scl
+	//				
+	//				
+	//				if( nxt_bit_is_ctrl ) begin //control event bit
+	//					if( i_is_mstr) begin
+	//						if(      final_byte) begin  
+	//							if( dont_stop) o_sda <= 1'b1;
+	//							else           o_sda <= 1'b0;
+	//							//o_sda <= #(2*i_timing) 1'b1;
+	//							//o_idle <= #(2*i_timing) 1'b1;
+	//						
+	//						end
+	//						else if ( stop_byte && start_byte) begin
+	//							o_sda <=               1'b0;
+	//							//o_sda <= #(2*i_timing) 1'b1;
+	//							//o_sda <= #(3*i_timing) 1'b0;
+	//						end
+	//						else if ( stop_byte ) begin
+	//							o_sda <=               1'b0;
+	//							//o_sda <= #(2*i_timing) 1'b1;
+	//						end
+	//						else if ( start_byte) begin
+	//							o_sda <=               1'b1;
+	//							//o_sda <= #(2*i_timing) 1'b0;
+	//						end
+	//					end
+	//					else begin //not master
+	//						o_sda <= 1'b1;
+	//					end
+	//				end
+	//				else begin 
+	//					o_sda <= cur_byte[8];
+	//				end
+	//				
+	//			end
+	//		end
+	//	end
+	//	
+	//end
+	
+	
+	
 	//handle o_sda data transitions 
 	always @( i_scl_sda_chng_ref) begin
 		if( !o_idle) begin
-			if( i_sda_violate) begin
-				if( i_scl_sda_chng_ref) begin //rising edge of reference scl
-					if( nxt_bit_ctrl ) begin //control event bit
-						if( i_is_mstr) begin
-							if(      final_byte) begin
+		
+			if( i_scl_sda_chng_ref) begin //rising edge of reference scl
+				if( nxt_bit_is_ctrl ) begin //control event bit
+					//$display("hey... HEY!!! timestamp asshole! here .. %t", $realtime);
+					if( i_is_mstr) begin
+						if(    final_byte) begin
+							if( dont_stop) o_sda <=           1'b1;
+							else  begin
+								o_sda <= 1'b0;
 								o_sda <= #i_timing 1'b1;
-								o_idle <= #(2*i_timing) 1'b1;
-								//o_sda <= #(2*i_timing) 1'b1;
-								//o_idle <= #(3*i_timing) 1'b1;
 							end
-							else if ( stop_byte && start_byte) begin
-								
-								o_sda <= #(  i_timing) 1'b1;
-								o_sda <= #(2*i_timing) 1'b0;
-							end
-							else if ( stop_byte )               o_sda <= #i_timing 1'b1;
-							else if ( start_byte)               o_sda <= #i_timing 1'b0;
+
+							o_idle <= #(2*i_timing) 1'b1;
+
 						end
-						else begin //not master
-							if(  final_byte) o_idle <= 1'b1;
-							o_sda <= 1'b1;
+						else if ( stop_byte && start_byte) begin
+							o_sda <=               1'b0;
+							o_sda <= #(  i_timing) 1'b1;
+							o_sda <= #(2*i_timing) 1'b0;
 						end
-						
+						else if ( stop_byte ) begin
+							o_sda <=           1'b0;
+							o_sda <= #i_timing 1'b1;
+						end
+						else if ( start_byte) begin          
+							o_sda <=           1'b1;
+							o_sda <= #i_timing 1'b0;
+						end
 					end
-					else begin 
-						o_sda <= cur_byte[8];
+					else begin //not master
+						if(  final_byte) o_idle <= #i_timing 1'b1;
+						o_sda <= 1'b1;
 					end
+					
 				end
-				else begin // falling edge of reference scl
-					o_sda <= ~o_sda;
-					//o_sda <= 1'bX;
+				else begin //next bit is not ctrl 
+					o_sda <= cur_byte[8];
 				end
 			end
-			else begin // if( !i_sda_violate)
-				if( i_scl_sda_chng_ref) begin //rising edge of reference scl
-					//o_sda <= o_sda; //no change, ignore
-					if( nxt_bit_ctrl ) begin //control event bit
-						if( i_is_mstr) begin
-							if(      final_byte) begin
-								o_sda <= #i_timing 1'b1;
-								o_idle <= #(2*i_timing) 1'b1;
-								//o_sda <= #(2*i_timing) 1'b1;
-								//o_idle <= #(3*i_timing) 1'b1;
-							end
-							else if ( stop_byte && start_byte) begin
+			else begin // falling edge of reference scl
+
+				if( nxt_bit_is_ctrl) begin
+					if( i_is_mstr) begin
+						if(    final_byte) begin
+							if( dont_stop) begin
+
+								o_sda <= i_sda_violate ? 1'b0 : 1'b1;
 								
-								o_sda <= #(  i_timing) 1'b1;
-								o_sda <= #(2*i_timing) 1'b0;
 							end
-							else if ( stop_byte )               o_sda <= #i_timing 1'b1;
-							else if ( start_byte)               o_sda <= #i_timing 1'b0;
+							else begin
+								o_sda <= i_sda_violate ? 1'b1 : 1'b0;
+								o_sda <= #i_timing 1'b1;
+							end
+
+							//o_idle <= #(2*i_timing) 1'b1;
+
 						end
-						else begin //not master
-							if(  final_byte) o_idle <= 1'b1;
-							o_sda <= 1'b1;
+						else if ( stop_byte && start_byte) begin
+							o_sda <= i_sda_violate? 1'b1 : 1'b0;
+							o_sda <= #(  i_timing) 1'b1;
+							o_sda <= #(2*i_timing) 1'b0;
 						end
-						
-					end
-					
-				end
-				else begin // falling edge of reference scl
-					
-					
-					if( nxt_bit_ctrl ) begin //control event bit
-						if( i_is_mstr) begin
-							if(      final_byte) begin                
-								o_sda <=               1'b0;
-								//o_sda <= #(2*i_timing) 1'b1;
-								//o_idle <= #(2*i_timing) 1'b1;
-							
-							end
-							else if ( stop_byte && start_byte) begin
-								o_sda <=               1'b0;
-								//o_sda <= #(2*i_timing) 1'b1;
-								//o_sda <= #(3*i_timing) 1'b0;
-							end
-							else if ( stop_byte ) begin
-								o_sda <=               1'b0;
-								//o_sda <= #(2*i_timing) 1'b1;
-							end
-							else if ( start_byte) begin
-								o_sda <=               1'b1;
-								//o_sda <= #(2*i_timing) 1'b0;
-							end
+						else if ( stop_byte ) begin
+							o_sda <= i_sda_violate? 1'b1 :  1'b0;
+							o_sda <= #i_timing 1'b1;
 						end
-						else begin //not master
-							o_sda <= 1'b1;
+						else if ( start_byte) begin          
+							o_sda <= i_sda_violate? 1'b0 :  1'b1;
+							o_sda <= #i_timing 1'b0;
 						end
 					end
-					else begin 
-						o_sda <= cur_byte[8];
+					else begin //not master
+						//if(  final_byte) o_idle <= #i_timing 1'b1;
+						o_sda <= 1'b1;
 					end
-					
+			
+				
 				end
 			end
+
 		end
 		
 	end
@@ -1609,6 +1874,7 @@ endmodule
 
 
 module mon_i2c(
+	input [511:0] fail_substr,
 	input i_scl,
 	input i_sda,
 	
@@ -1662,8 +1928,13 @@ module mon_i2c(
 	always @(posedge i_scl) begin
 	
 		if( i_en_timing_check) begin
-			if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation();
-			if( time_elapsed( t_su_start ) < i_t_low) task_t_su_violation();
+			if( time_elapsed( t_low_start) < i_t_low) begin 
+				task_t_low_violation( $realtime, time_elapsed( t_low_start));
+			end
+			if( time_elapsed( t_su_start ) < i_t_su) begin
+				task_t_su_violation($realtime, time_elapsed( t_low_start));
+			end
+
 			t_low_start = $realtime;
 		end
 	
@@ -1671,7 +1942,8 @@ module mon_i2c(
 	
 	always @(negedge i_scl) begin
 		if( i_en_timing_check) begin
-			if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation();
+			if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation( $realtime, time_elapsed( t_low_start));
+
 			t_low_start = $realtime;
 		end
 	end
@@ -1679,7 +1951,7 @@ module mon_i2c(
 	always @(i_sda) begin
 		if( i_en_timing_check) begin
 			if( i_scl) begin
-				if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation();
+				if( time_elapsed( t_low_start) < i_t_low) task_t_low_violation( $realtime, time_elapsed( t_low_start));
 				t_low_start = $realtime;
 			end
 			else begin
@@ -1698,18 +1970,35 @@ module mon_i2c(
 	endfunction
 	
 	
+	//task task_t_low_violation;
+	//	begin
+	//		$display("-------  Failed test: task_t_low_violation ------");
+	//		$display("    %s", str_lalign( fail_substr) );
+	//		$display("    time: %t", $realtime);
+	//		o_timing_check_err = 1'b1;
+	//	end
+	//endtask
+	
 	task task_t_low_violation;
+		input realtime timestamp;
+		input realtime duration;
 		begin
 			$display("-------  Failed test: task_t_low_violation ------");
-			$display("    time: %t", $realtime);
+			$display("    %s", str_lalign( fail_substr) );
+			$display("    time    : %t", timestamp);
+			$display("    duration: %t", duration );
 			o_timing_check_err = 1'b1;
 		end
 	endtask
 	
 	task task_t_su_violation;
+		input realtime timestamp;
+		input realtime duration;
 		begin
 			$display("-------  Failed test: task_t_su_violation ------");
-			$display("    time: %t", $realtime);
+			$display("    %s", str_lalign( fail_substr) );
+			$display("    time    : %t", timestamp);
+			$display("    duration: %t", duration );
 			o_timing_check_err = 1'b1;
 		end
 	endtask

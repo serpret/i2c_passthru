@@ -24,6 +24,27 @@
 
 module i2c_passthru #(
 
+
+	//enable 2 flip flop asynchronous signal filtering
+	//to avoid metastability.  Add 2 clock cycle delay
+	//(recommended if external signals connected
+	// directly to this module)
+	parameter INFILTER_EN_2FF_SYNC = 0,
+	
+	//width required for INFILTER_NUM_CLKS_XXX parameters below
+	parameter INFILTER_NUM_CLKS_WIDTH =4,
+	
+	//number of clocks to count of i_sda/i_scl before they are registered as hi/lo
+	//(hi and lo have separate counts, so, for example, transition from hi->lo can
+	// be very fast, while transition from lo->hi can be slow
+	
+	// recommend numbers for 100khz i2c:  i_clk / value , clk / value ,   clk / value
+	parameter INFILTER_NUM_CLKS_HI2LO_SDA = 6, //  4MHz / 2      16MHz / 5       66MHz / 10
+	parameter INFILTER_NUM_CLKS_LO2HI_SDA = 6, //  4MHz / 2      16MHz / 5       66MHz / 10
+	parameter INFILTER_NUM_CLKS_HI2LO_SCL = 4, //  4MHz / 1      16MHz / 3       66MHz / 6
+	parameter INFILTER_NUM_CLKS_LO2HI_SCL = 8, //  4MHz / 3      16MHz / 7       66MHz / 14
+
+
 	//register the channel a and b scl and sda outputs 
 	//through a single flip flop. recommended for output
 	//onto chip external pads to avoid all glitches.
@@ -145,9 +166,9 @@ module i2c_passthru #(
 	reg bittx_scl_in      ;
 	reg bittx_sda_in      ;
 	
-	
-	wire bittx_tx_done     ;
-	wire bittx_violation   ;
+	wire bittx_slv_on_mst_ch;
+	wire bittx_tx_done      ;
+	wire bittx_violation    ;
 	
 
 	
@@ -181,6 +202,14 @@ module i2c_passthru #(
 	wire chb_idle  ;
 	wire chb_stuck ;
 	
+	//misc
+	reg cha_ismst_buf;
+	reg chb_ismst_buf;
+	
+	wire cha_ismst_mux;
+	wire chb_ismst_mux;
+	
+	
 	
 	//flip flop buffers for generating 1 clock pulsed signals
 	reg prev_bittx_violation ;
@@ -207,6 +236,12 @@ module i2c_passthru #(
 	
 	assign bittx_violation_pulse = ~prev_bittx_violation & bittx_violation ;
 	assign bitrx_violation_pulse = ~prev_bitrx_violation & bitrx_violation ;
+
+	//add 1 clock cycle delay to chx_ismst
+	assign cha_ismst_mux = cha_ismst | cha_ismst_buf;
+	assign chb_ismst_mux = chb_ismst | chb_ismst_buf;
+
+
 
 
 	
@@ -236,54 +271,140 @@ module i2c_passthru #(
 	// ********* TOP LEVEL LOGIC  *******************************************
 
 	//output logic for channel a and b
+	
+	//not sure how to fix atm.  cha_ismst falls immediately on stop from channel A.
+	//but this means channel a scl/sda outputs switch from bitrx to bittx.
+	//can use bus idle to filter it.  if the bus is idle and the i2c is not disconnected set 
+	//to 1'b1.
+	
+	
 	always @(*) begin
-		if( o_cha_stuck) begin
+		if( cha_stuck ) begin
 			o_cha_scl_prereg = cha_recover_scl;
 			o_cha_sda_prereg = cha_recover_sda;
-			o_chb_scl_prereg = chb_recover_scl;
-			o_chb_sda_prereg = chb_recover_sda;
-
 		end
+	
 		else begin
-			case( {cha_ismst, rxtx_tx_to_mst})
+			case( {cha_ismst_mux, rxtx_tx_to_mst})
 				2'b00: begin
 					o_cha_scl_prereg = bittx_scl;
 					o_cha_sda_prereg = bittx_sda;
-					o_chb_scl_prereg = bitrx_scl;
-					o_chb_sda_prereg = bitrx_sda;
 				end
 				
 				2'b01: begin
 					o_cha_scl_prereg = bitrx_scl;
 					o_cha_sda_prereg = bitrx_sda;
-					o_chb_scl_prereg = bittx_scl;
-					o_chb_sda_prereg = bittx_sda;
 				end
 				
 				2'b10: begin
 					o_cha_scl_prereg = bitrx_scl;
 					o_cha_sda_prereg = bitrx_sda;
-					o_chb_scl_prereg = bittx_scl;
-					o_chb_sda_prereg = bittx_sda;
 				end
 				
 				2'b11: begin
 					o_cha_scl_prereg = bittx_scl;
 					o_cha_sda_prereg = bittx_sda;
-					o_chb_scl_prereg = bitrx_scl;
-					o_chb_sda_prereg = bitrx_sda;
 				end
 				
 				default: begin
-					o_cha_scl_prereg = 1'b1;
-					o_cha_sda_prereg = 1'b1;
-					o_chb_scl_prereg = 1'b1;
-					o_chb_sda_prereg = 1'b1;
+					o_cha_scl_prereg = bitrx_scl;
+					o_cha_sda_prereg = bitrx_sda;
 				end
 				
 			endcase
 		end
 	end
+	
+	
+	
+	always @(*) begin
+		if( chb_stuck ) begin
+			o_chb_scl_prereg = chb_recover_scl;
+			o_chb_sda_prereg = chb_recover_sda;
+		end
+		else begin
+			case( {chb_ismst_mux, rxtx_tx_to_mst})
+				2'b00: begin
+					o_chb_scl_prereg = bittx_scl;
+					o_chb_sda_prereg = bittx_sda;
+				end
+				
+				2'b01: begin
+					o_chb_scl_prereg = bitrx_scl;
+					o_chb_sda_prereg = bitrx_sda;
+				end
+				
+				2'b10: begin
+					o_chb_scl_prereg = bitrx_scl;
+					o_chb_sda_prereg = bitrx_sda;
+				end
+				
+				2'b11: begin
+					o_chb_scl_prereg = bittx_scl;
+					o_chb_sda_prereg = bittx_sda;
+				end
+				
+				default: begin
+					o_chb_scl_prereg = bitrx_scl;
+					o_chb_sda_prereg = bitrx_sda;
+				end
+				
+			endcase
+		end
+	end
+	
+	
+	
+	
+	
+	//always @(*) begin
+	//	if( cha_stuck || chb_stuck) begin
+	//		o_cha_scl_prereg = cha_recover_scl;
+	//		o_cha_sda_prereg = cha_recover_sda;
+	//		o_chb_scl_prereg = chb_recover_scl;
+	//		o_chb_sda_prereg = chb_recover_sda;
+	//
+	//	end
+	//	else begin
+	//		case( {cha_ismst, rxtx_tx_to_mst})
+	//			2'b00: begin
+	//				o_cha_scl_prereg = bittx_scl;
+	//				o_cha_sda_prereg = bittx_sda;
+	//				o_chb_scl_prereg = bitrx_scl;
+	//				o_chb_sda_prereg = bitrx_sda;
+	//			end
+	//			
+	//			2'b01: begin
+	//				o_cha_scl_prereg = bitrx_scl;
+	//				o_cha_sda_prereg = bitrx_sda;
+	//				o_chb_scl_prereg = bittx_scl;
+	//				o_chb_sda_prereg = bittx_sda;
+	//			end
+	//			
+	//			2'b10: begin
+	//				o_cha_scl_prereg = bitrx_scl;
+	//				o_cha_sda_prereg = bitrx_sda;
+	//				o_chb_scl_prereg = bittx_scl;
+	//				o_chb_sda_prereg = bittx_sda;
+	//			end
+	//			
+	//			2'b11: begin
+	//				o_cha_scl_prereg = bittx_scl;
+	//				o_cha_sda_prereg = bittx_sda;
+	//				o_chb_scl_prereg = bitrx_scl;
+	//				o_chb_sda_prereg = bitrx_sda;
+	//			end
+	//			
+	//			default: begin
+	//				o_cha_scl_prereg = 1'b1;
+	//				o_cha_sda_prereg = 1'b1;
+	//				o_chb_scl_prereg = 1'b1;
+	//				o_chb_sda_prereg = 1'b1;
+	//			end
+	//			
+	//		endcase
+	//	end
+	//end
 	
 	
 
@@ -298,43 +419,71 @@ module i2c_passthru #(
 		//output logic for channel a
 	always @(*) begin
 
-		case( {cha_ismst, rxtx_tx_to_mst})
-			2'b00: begin
-				bittx_scl_in  =  cha_scl_fltrd   ;
-				bittx_sda_in  =  cha_sda_fltrd   ;
+		case( {cha_ismst_mux, chb_ismst_mux,  rxtx_tx_to_mst})
+				
+
+			3'b010: begin
 				bitrx_scl_in  =  chb_scl_fltrd   ;
 				bitrx_sda_in  =  chb_sda_fltrd   ;
 			end
 			
-			2'b01: begin
-				bittx_scl_in  =  chb_scl_fltrd   ;
-				bittx_sda_in  =  chb_sda_fltrd   ;
+			3'b011: begin
 				bitrx_scl_in  =  cha_scl_fltrd   ;
 				bitrx_sda_in  =  cha_sda_fltrd   ;
 				
 			end
 			
-			2'b10: begin
-				bittx_scl_in  =  chb_scl_fltrd   ;
-				bittx_sda_in  =  chb_sda_fltrd   ;
+			3'b100: begin
 				bitrx_scl_in  =  cha_scl_fltrd   ;
 				bitrx_sda_in  =  cha_sda_fltrd   ;
 				
 			end
 			
-			2'b11: begin
-				bittx_scl_in  =  cha_scl_fltrd   ;
-				bittx_sda_in  =  cha_sda_fltrd   ;
+			3'b101: begin
 				bitrx_scl_in  =  chb_scl_fltrd   ;
 				bitrx_sda_in  =  chb_sda_fltrd   ;
 			end
 			
 			default: begin
-				bittx_scl_in  = 1'b1;
-				bittx_sda_in  = 1'b1;
 				bitrx_scl_in  = 1'b1;
 				bitrx_sda_in  = 1'b1;
+			end
+			
+		endcase
+	
+	end
+	
+	
+	
+	
+	always @(*) begin
+
+		case( {cha_ismst_mux, chb_ismst_mux, rxtx_tx_to_mst})
+			3'b010: begin
+				bittx_scl_in  =  cha_scl_fltrd   ;
+				bittx_sda_in  =  cha_sda_fltrd   ;
+			end
+			
+			3'b011: begin
+				bittx_scl_in  =  chb_scl_fltrd   ;
+				bittx_sda_in  =  chb_sda_fltrd   ;
 				
+			end
+			
+			3'b100: begin
+				bittx_scl_in  =  chb_scl_fltrd   ;
+				bittx_sda_in  =  chb_sda_fltrd   ;
+				
+			end
+			
+			3'b101: begin
+				bittx_scl_in  =  cha_scl_fltrd   ;
+				bittx_sda_in  =  cha_sda_fltrd   ;
+			end
+			
+			default: begin
+				bittx_scl_in  = 1'b1;
+				bittx_sda_in  = 1'b1;
 			end
 			
 		endcase
@@ -346,13 +495,22 @@ module i2c_passthru #(
 	
 	
 	
+	
+	
 	// ********* SUBMODULES  ************************************************
 	
 	//i2c input filters 
 	// (glitch suppresion, and start stop detection more reliable)
-	i2c_passthru_infilter u_filter_cha(
+	i2c_passthru_infilter #(
+		.EN_2FF_SYNC        (INFILTER_EN_2FF_SYNC       ),
+		.NUM_CLKS_WIDTH     (INFILTER_NUM_CLKS_WIDTH    ),
+		.NUM_CLKS_HI2LO_SDA (INFILTER_NUM_CLKS_HI2LO_SDA),
+		.NUM_CLKS_LO2HI_SDA (INFILTER_NUM_CLKS_LO2HI_SDA),
+		.NUM_CLKS_HI2LO_SCL (INFILTER_NUM_CLKS_HI2LO_SCL),
+		.NUM_CLKS_LO2HI_SCL (INFILTER_NUM_CLKS_LO2HI_SCL)
+	) u_filter_cha(
 		.i_clk (i_clk ),
-		.i_rstn(i_rstn),
+		//.i_rstn(i_rstn),
 		.i_sda (i_cha_sda ),
 		.i_scl (i_cha_scl ),
 		
@@ -361,9 +519,16 @@ module i2c_passthru #(
 	);
 	
 	
-	i2c_passthru_infilter u_filter_chb(
+	i2c_passthru_infilter #(
+		.EN_2FF_SYNC        (INFILTER_EN_2FF_SYNC       ),
+		.NUM_CLKS_WIDTH     (INFILTER_NUM_CLKS_WIDTH    ),
+		.NUM_CLKS_HI2LO_SDA (INFILTER_NUM_CLKS_HI2LO_SDA),
+		.NUM_CLKS_LO2HI_SDA (INFILTER_NUM_CLKS_LO2HI_SDA),
+		.NUM_CLKS_HI2LO_SCL (INFILTER_NUM_CLKS_HI2LO_SCL),
+		.NUM_CLKS_LO2HI_SCL (INFILTER_NUM_CLKS_LO2HI_SCL)
+	)u_filter_chb(
 		.i_clk (i_clk ),
-		.i_rstn(i_rstn),
+		//.i_rstn(i_rstn),
 		.i_sda (i_chb_sda ),
 		.i_scl (i_chb_scl ),
 		
@@ -449,6 +614,7 @@ module i2c_passthru #(
 		.i_tx_done          ( bittx_tx_done       ),
 		.i_rx_sda_init_valid(bitrx_sda_init_valid ),
 		.i_rx_sda_init      (bitrx_sda_init       ),
+		.i_tx_slv_on_mst_ch (bittx_slv_on_mst_ch  ),
 		
 		.o_start              ( rxtx_start          ),
 		.o_tx_to_mst        ( rxtx_tx_to_mst      )
@@ -507,6 +673,7 @@ module i2c_passthru #(
 
 		.o_scl              (bittx_scl             ),
 		.o_sda              (bittx_sda             ),
+		.o_slv_on_mst_ch    (bittx_slv_on_mst_ch   ),
 		.o_tx_done          (bittx_tx_done         ),
 		.o_violation        (bittx_violation       )
 		
@@ -516,14 +683,20 @@ module i2c_passthru #(
 
 	// ********* GENERATE 1 CLOCK PULSES ************************************
 	always @(posedge i_clk) begin
+	
+		// ********* GENERATE 1 CLOCK PULSES ********************************
 		prev_bittx_violation <= bittx_violation;
 		prev_bitrx_violation <= bitrx_violation;
 		prev_cha_stuck       <= cha_stuck;
 		prev_chb_stuck       <= chb_stuck;
+		
+		// ********* MISC                    ********************************
+		cha_ismst_buf <= cha_ismst;
+		chb_ismst_buf <= chb_ismst;
 
 	end
 	
-	
+
 	
 
 

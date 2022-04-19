@@ -119,6 +119,15 @@ module i2c_passthru_idle_stuck_recover #(
 	wire start;
 	wire stop;
 	
+	
+	//for simulation
+	initial begin
+		timer_thi   = -1;
+		timer_tlow  = -1;
+		timer_stuck = -1;
+
+	end
+	
 	assign negedge_sda =  prev_sda && ~i_sda;
 	assign posedge_sda = ~prev_sda &&  i_sda;
 	//assign anyedge_sda =  prev_sda !=  i_sda;
@@ -218,19 +227,21 @@ module i2c_passthru_idle_stuck_recover #(
 			
 			ST_NORM_ACTIVE      :
 			begin
-			 	timer_tlow_rst = 1;
+			 	//timer_tlow_rst = 1;
 
 				if(      timer_stuck_tc  )       nxt_state = ST_STUCK_INIT0;
 				else if( timer_thi_tc    )       nxt_state = ST_NORM_IDLE_TIMEOUT;
-				else if (stop            )       nxt_state = ST_NORM_ACTIVE_STOP;
+				else if (stop            )       nxt_state = ST_NORM_IDLE;
+				//else if (stop            )       nxt_state = ST_NORM_ACTIVE_STOP;
+
 			end
 			
-			ST_NORM_ACTIVE_STOP :
-			begin
-				if(      timer_stuck_tc  )       nxt_state = ST_STUCK_INIT0;
-				else if( ~i_sda || ~i_scl)       nxt_state = ST_NORM_ACTIVE;
-				else if( timer_tlow_tc   )       nxt_state = ST_NORM_IDLE;
-			end
+			//ST_NORM_ACTIVE_STOP :
+			//begin
+			//	if(      timer_stuck_tc  )       nxt_state = ST_STUCK_INIT0;
+			//	else if( ~i_sda || ~i_scl)       nxt_state = ST_NORM_ACTIVE;
+			//	else if( timer_tlow_tc   )       nxt_state = ST_NORM_IDLE;
+			//end
 			
 			ST_NORM_IDLE_TIMEOUT: 
 			begin

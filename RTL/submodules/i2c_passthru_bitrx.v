@@ -86,6 +86,8 @@ module i2c_passthru_bitrx #(
 	reg set_sda_init;
 	reg set_sda_final;
 	
+	reg in_sda_buf;
+	
 	assign 	pulse_ref = ~prev_f_ref && i_f_ref;
 	assign timer_t_low_tc     = timer_t_low     == 0;
 	
@@ -103,9 +105,10 @@ module i2c_passthru_bitrx #(
 	end
 	
 	always @(*) begin
-		if( set_sda_final ) nxt_rx_sda_final = i_sda;
+		if( set_sda_final ) nxt_rx_sda_final = in_sda_buf;
 		else                nxt_rx_sda_final = o_rx_sda_final;
 	end
+	
 	
 	
 	
@@ -305,6 +308,8 @@ module i2c_passthru_bitrx #(
 		timer_t_low       <= nxt_timer_t_low ;
 		//o_rx_sda_init     <= nxt_rx_sda_init ;
 		o_rx_sda_final    <= nxt_rx_sda_final;
+		in_sda_buf        <= i_sda;
+		
 		
 	end
 	

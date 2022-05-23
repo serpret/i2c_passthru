@@ -227,9 +227,11 @@ module i2c_passthru_bittx #(
 			
 			ST_TX2MST_SLV_ON_MST_CH      :
 			begin
+				o_scl = 1'b1;
+				o_sda = 1'b1;
 				o_slv_on_mst_ch = 1;
 				
-				nxt_state = ST_IDLE_SLV_ON_MST_CH;
+				if( ~i_scl) nxt_state = ST_IDLE_SLV_ON_MST_CH;
 			end
 			
 			

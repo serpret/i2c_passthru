@@ -114,66 +114,89 @@ module tb();
 		
 	//master driver signals
 
-	reg              drv_cha_mst_start                 ;  
-	reg   [31:0]     drv_cha_mst_sda_scl_timing_ref    ; //[31:0]
-	reg   [31:0]     drv_cha_mst_scl_lo_timing         ; //[31:0]
-	reg   [31:0]     drv_cha_mst_scl_hi_timing         ; //[31:0]
-	reg              drv_cha_mst_sda_chng_on_rising_scl; //      
-	reg   [2:0]      drv_cha_mst_num_bytes             ; //[2:0] 
-	reg   [2:0]      drv_cha_mst_repeatstart_after_byte; //[2:0] 
-	reg   [2:0]      drv_cha_mst_stop_after_byte       ; //[2:0] 
-	reg   [8:0]      drv_cha_mst_byte_0                ; //[8:0] 
-	reg   [8:0]      drv_cha_mst_byte_1                ; //[8:0] 
-	reg   [8:0]      drv_cha_mst_byte_2                ; //[8:0] 
-	reg   [8:0]      drv_cha_mst_byte_3                ; //[8:0] 
-	reg   [8:0]      drv_cha_mst_byte_4                ; //[8:0] 
-	reg   [8:0]      drv_cha_mst_byte_5                ; //[8:0] 
-	reg   [8:0]      drv_cha_mst_byte_6                ; //[8:0] 
+		//cha
+	reg              drv_cha_mst_start                 ; 
+	reg   [31:0]     drv_cha_mst_scl_lo_timing         ; 
+	reg   [31:0]     drv_cha_mst_scl_hi_timing         ; 
+	reg   [2:0]      drv_cha_mst_num_bytes             ; 
+	reg   [2:0]      drv_cha_mst_repeatstart_after_byte; 
+	reg   [2:0]      drv_cha_mst_stop_after_byte       ; 
+	reg   [8:0]      drv_cha_mst_byte_0                ; 
+	reg   [8:0]      drv_cha_mst_byte_1                ; 
+	reg   [8:0]      drv_cha_mst_byte_2                ; 
+	reg   [8:0]      drv_cha_mst_byte_3                ; 
+	reg   [8:0]      drv_cha_mst_byte_4                ; 
+	reg   [8:0]      drv_cha_mst_byte_5                ; 
+	reg   [8:0]      drv_cha_mst_byte_6                ; 
 	
 	wire  drv_cha_mst_scl ;
 	wire  drv_cha_mst_sda ;
 	wire  drv_cha_mst_idle;
 	
+		//chb
+	reg              drv_chb_mst_start                 ;  
+	reg   [31:0]     drv_chb_mst_scl_lo_timing         ; 
+	reg   [31:0]     drv_chb_mst_scl_hi_timing         ; 
+	reg   [2:0]      drv_chb_mst_num_bytes             ; 
+	reg   [2:0]      drv_chb_mst_repeatstart_after_byte; 
+	reg   [2:0]      drv_chb_mst_stop_after_byte       ; 
+	reg   [8:0]      drv_chb_mst_byte_0                ; 
+	reg   [8:0]      drv_chb_mst_byte_1                ; 
+	reg   [8:0]      drv_chb_mst_byte_2                ; 
+	reg   [8:0]      drv_chb_mst_byte_3                ; 
+	reg   [8:0]      drv_chb_mst_byte_4                ; 
+	reg   [8:0]      drv_chb_mst_byte_5                ; 
+	reg   [8:0]      drv_chb_mst_byte_6                ; 
+	
+	wire  drv_chb_mst_scl ;
+	wire  drv_chb_mst_sda ;
+	wire  drv_chb_mst_idle;
+	
 	
 	//slave driver signals
+		//cha
+	reg drv_cha_slv_en ;
+
+	reg [8:0] drv_cha_slv_byte_0  ; 
+	reg [8:0] drv_cha_slv_byte_1  ;
+	reg [8:0] drv_cha_slv_byte_2  ;
+	reg [8:0] drv_cha_slv_byte_3  ;
+	reg [8:0] drv_cha_slv_byte_4  ;
+	reg [8:0] drv_cha_slv_byte_5  ;  
+	reg [8:0] drv_cha_slv_byte_6  ;
 	
-	reg              drv_chb_slv_start                 ;  
-	reg   [31:0]     drv_chb_slv_sda_scl_timing_ref    ; //[31:0]
-	reg   [31:0]     drv_chb_slv_scl_lo_timing         ; //[31:0]
-	reg   [31:0]     drv_chb_slv_scl_hi_timing         ; //[31:0]
-	reg              drv_chb_slv_sda_chng_on_rising_scl; //      
-	reg   [2:0]      drv_chb_slv_num_bytes             ; //[2:0] 
-	reg   [2:0]      drv_chb_slv_repeatstart_after_byte; //[2:0] 
-	reg   [2:0]      drv_chb_slv_stop_after_byte       ; //[2:0] 
-	reg   [8:0]      drv_chb_slv_byte_0                ; //[8:0] 
-	reg   [8:0]      drv_chb_slv_byte_1                ; //[8:0] 
-	reg   [8:0]      drv_chb_slv_byte_2                ; //[8:0] 
-	reg   [8:0]      drv_chb_slv_byte_3                ; //[8:0] 
-	reg   [8:0]      drv_chb_slv_byte_4                ; //[8:0] 
-	reg   [8:0]      drv_chb_slv_byte_5                ; //[8:0] 
-	reg   [8:0]      drv_chb_slv_byte_6                ; //[8:0] 
+	wire drv_cha_slv_sda ;
 	
-	wire  drv_chb_slv_scl ;
-	wire  drv_chb_slv_sda ;
-	wire  drv_chb_slv_idle;
+		//chb
+	reg drv_chb_slv_en ;
 
+	reg [8:0] drv_chb_slv_byte_0  ; 
+	reg [8:0] drv_chb_slv_byte_1  ;
+	reg [8:0] drv_chb_slv_byte_2  ;
+	reg [8:0] drv_chb_slv_byte_3  ;
+	reg [8:0] drv_chb_slv_byte_4  ;
+	reg [8:0] drv_chb_slv_byte_5  ;  
+	reg [8:0] drv_chb_slv_byte_6  ;
+	
+	wire drv_chb_slv_sda ;
+	
+	
 
-
-	//master monitor
+	//channel a timing monitor
 			
-		reg mon_mst_en_timing_check              ;
-		reg mon_mst_clr_all                      ;
-		wire [ 31:0]  mon_mst_num_events         ;
-		wire [255:0]  mon_mst_events             ;
-		wire          mon_mst_timing_check_err   ;
+		reg mon_cha_en_timing_check              ;
+		reg mon_cha_clr_all                      ;
+		wire [ 31:0]  mon_cha_num_events         ;
+		wire [255:0]  mon_cha_events             ;
+		wire          mon_cha_timing_check_err   ;
 		
-	//slave monitor
+	//channel b timing monitor
 			
-		reg mon_slv_en_timing_check              ;
-		reg mon_slv_clr_all                      ;
-		wire [ 31:0]  mon_slv_num_events         ;
-		wire [255:0]  mon_slv_events             ;
-		wire          mon_slv_timing_check_err   ;
+		reg mon_chb_en_timing_check              ;
+		reg mon_chb_clr_all                      ;
+		wire [ 31:0]  mon_chb_num_events         ;
+		wire [255:0]  mon_chb_events             ;
+		wire          mon_chb_timing_check_err   ;
 		
 		
 	//optional signal monitor
@@ -185,9 +208,6 @@ module tb();
 	wire [31:0] mon_opt_cnt_chb_stuck    ;
 	
 	
-
-
-	
 	`ifdef FAST_F_REF /////////////////////////////////
 		always #5          i_clk            = ~i_clk;        //period 10ns
 		always #50         f_ref_unsync     = ~f_ref_unsync; //period 100ns
@@ -197,8 +217,6 @@ module tb();
 		always #500        f_ref_unsync     = ~f_ref_unsync; //period 1us
 	
 	`endif ////////////////////////////////////////////
-
-
 	
 	
 	always #8_000_000 f_ref_slow_unsync = ~f_ref_slow_unsync; // 16ms period. 
@@ -261,10 +279,10 @@ module tb();
 		.i_scl                   ( cha_scl                           ),
 		.i_sda                   ( cha_sda                           ),
 		.i_start                 (drv_cha_mst_start                 ),  
-		.i_sda_scl_timing_ref    (drv_cha_mst_sda_scl_timing_ref    ), //[31:0]
+		//.i_sda_scl_timing_ref    (drv_cha_mst_sda_scl_timing_ref    ), //[31:0]
 		.i_scl_lo_timing         (drv_cha_mst_scl_lo_timing         ), //[31:0]
 		.i_scl_hi_timing         (drv_cha_mst_scl_hi_timing         ), //[31:0]
-		.i_sda_chng_on_rising_scl(drv_cha_mst_sda_chng_on_rising_scl), //      
+		//.i_sda_chng_on_rising_scl(drv_cha_mst_sda_chng_on_rising_scl), //      
 		.i_num_bytes             (drv_cha_mst_num_bytes             ), //[2:0] 
 		.i_repeatstart_after_byte(drv_cha_mst_repeatstart_after_byte), //[2:0] 
 		.i_stop_after_byte       (drv_cha_mst_stop_after_byte       ), //[2:0] 
@@ -283,8 +301,25 @@ module tb();
 	
 	
 
+	
+	driver_slvi2c u_driver_chb_slv(
+		.i_en    (drv_chb_slv_en    ),
+		.i_scl   (chb_scl           ),
+		.i_sda   (chb_sda           ),
+		.i_byte_0(drv_chb_slv_byte_0),
+		.i_byte_1(drv_chb_slv_byte_1),
+		.i_byte_2(drv_chb_slv_byte_2),
+		.i_byte_3(drv_chb_slv_byte_3),
+		.i_byte_4(drv_chb_slv_byte_4),
+		.i_byte_5(drv_chb_slv_byte_5),   
+		.i_byte_6(drv_chb_slv_byte_6),
+		
+		.o_sda   (drv_chb_slv_sda   )
+	);
+	
+	
 
-	reg [511:0] mon_mst_fail_substr = "master timing fail";
+	reg [511:0] mon_cha_fail_substr = "channel a timing fail";
 	mon_i2c #(
 		.DEF_MON_EVENT_0( `MON_EVENT_0),
 		.DEF_MON_EVENT_1( `MON_EVENT_1),
@@ -293,22 +328,22 @@ module tb();
 		
 	) u_monitor_cha (
 	
-		.fail_substr( mon_mst_fail_substr),
+		.fail_substr( mon_cha_fail_substr),
 		.i_scl( cha_scl                            ),
 		.i_sda( cha_sda                            ),
 		
-		.i_en_timing_check( mon_mst_en_timing_check),
-		.i_clr_all        ( mon_mst_clr_all        ),
+		.i_en_timing_check( mon_cha_en_timing_check),
+		.i_clr_all        ( mon_cha_clr_all        ),
 		
 		.i_t_low          (  NS_T_LOW_MIN           ),
 		.i_t_su           (  NS_T_SU_DAT_MIN        ),
 		
-		.o_num_events      (mon_mst_num_events      ), 
-		.o_events          (mon_mst_events          ),
-		.o_timing_check_err(mon_mst_timing_check_err)
+		.o_num_events      (mon_cha_num_events      ), 
+		.o_events          (mon_cha_events          ),
+		.o_timing_check_err(mon_cha_timing_check_err)
 	);
 	
-	reg [511:0] mon_slv_fail_substr = "slave timing fail";
+	reg [511:0] mon_chb_fail_substr = "channel b timing fail";
 	mon_i2c #(
 		.DEF_MON_EVENT_0( `MON_EVENT_0),
 		.DEF_MON_EVENT_1( `MON_EVENT_1),
@@ -317,19 +352,19 @@ module tb();
 		
 	) u_monitor_chb(
 	
-		.fail_substr( mon_slv_fail_substr),
+		.fail_substr( mon_chb_fail_substr),
 		.i_scl(  chb_scl ),
 		.i_sda(  chb_sda ),
 		
-		.i_en_timing_check( mon_slv_en_timing_check),
-		.i_clr_all        ( mon_slv_clr_all        ),
+		.i_en_timing_check( mon_chb_en_timing_check),
+		.i_clr_all        ( mon_chb_clr_all        ),
 		
 		.i_t_low          (  NS_T_LOW_MIN           ),
 		.i_t_su           (  NS_T_SU_DAT_MIN        ),
 		
-		.o_num_events      (mon_slv_num_events      ), 
-		.o_events          (mon_slv_events          ),
-		.o_timing_check_err(mon_slv_timing_check_err)
+		.o_num_events      (mon_chb_num_events      ), 
+		.o_events          (mon_chb_events          ),
+		.o_timing_check_err(mon_chb_timing_check_err)
 	);
 	
 	
@@ -351,30 +386,35 @@ module tb();
 	);
 	
 	//for testing for now.
-	assign drv_chb_slv_scl = 1'b1;
-	assign drv_chb_slv_sda = 1'b1;
+	assign drv_chb_mst_scl = 1'b1;
+	assign drv_chb_mst_sda = 1'b1;
+	
+	//assign drv_cha_slv_scl = 1'b1;
+	assign drv_cha_slv_sda = 1'b1;
+	
+	
 
-	//channel A
+	//channel A  open-drain logic
 	always @(*) begin
-			if( o_cha_scl & drv_cha_mst_scl) cha_scl <= #time_mst_rise 1'b1;
-			else                             cha_scl <= #time_mst_fall 1'b0;
+		if( o_cha_scl & drv_cha_mst_scl                  ) cha_scl <= #time_mst_rise 1'b1;
+		else                                               cha_scl <= #time_mst_fall 1'b0;
 	end
 	
 	always @(*) begin
-			if( o_cha_sda & drv_cha_mst_sda) cha_sda <= #time_mst_rise 1'b1;
-			else                             cha_sda <= #time_mst_fall 1'b0;
+		if( o_cha_sda & drv_cha_mst_sda & drv_cha_slv_sda) cha_sda <= #time_mst_rise 1'b1;
+		else                                               cha_sda <= #time_mst_fall 1'b0;
 	end
 
-	//channel B
+	//channel B open-drain logic
 	always @(*) begin
-		if( o_chb_scl & drv_chb_slv_scl) chb_scl <= #time_slv_rise 1'b1;
-		else                             chb_scl <= #time_slv_fall 1'b0;
+		if( o_chb_scl & drv_chb_mst_scl                   ) chb_scl <= #time_slv_rise 1'b1;
+		else                                                chb_scl <= #time_slv_fall 1'b0;
 		
 	end
 
 	always @(*) begin
-		if( o_chb_sda & drv_chb_slv_sda) chb_sda <= #time_slv_rise 1'b1;
-		else                             chb_sda <= #time_slv_fall 1'b0;
+		if( o_chb_sda & drv_chb_mst_sda & drv_chb_slv_sda ) chb_sda <= #time_slv_rise 1'b1;
+		else                                                chb_sda <= #time_slv_fall 1'b0;
 	end
 	
 
@@ -403,7 +443,6 @@ module tb();
 			f_ref_unsync  =0;
 			f_ref_slow_unsync =0;
 			
-			
 			cha_scl       = 1;
 			cha_sda       = 1;
 			chb_scl       = 1;
@@ -415,12 +454,12 @@ module tb();
 			time_slv_rise         = 32'h0000_0000;
 			time_slv_fall         = 32'h0000_0000;
 			
-			mon_mst_en_timing_check = 0;
-			mon_slv_en_timing_check = 0;
+			mon_cha_en_timing_check = 0;
+			mon_chb_en_timing_check = 0;
 
 			
-			init_drv_cha_mst_();
-			//init_drv_slv();
+			init_drv_cha_mst();
+			init_drv_chb_slv();
 			#1;
 			
 			
@@ -428,14 +467,12 @@ module tb();
 	endtask
 	
 	
-	task init_drv_cha_mst_;
+	task init_drv_cha_mst;
 		begin
 			
 			drv_cha_mst_start                  = 0;  
-			drv_cha_mst_sda_scl_timing_ref     = 32'd0; //[31:0]
 			drv_cha_mst_scl_lo_timing          = 32'd5000; //[31:0]
 			drv_cha_mst_scl_hi_timing          = 32'd5000; //[31:0]
-			drv_cha_mst_sda_chng_on_rising_scl = 0; //      
 			drv_cha_mst_num_bytes              = 3'h0; //[2:0] 
 			drv_cha_mst_repeatstart_after_byte = 3'h0; //[2:0] 
 			drv_cha_mst_stop_after_byte        = 3'h0; //[2:0] 
@@ -446,23 +483,14 @@ module tb();
 	endtask
 	
 	
-	//task init_drv_slv;
-	//	begin
-	//		drv_chb_slv_start                 = 0;
-	//		//drv_chb_slv_timing                = 32'd5000; //ns
-	//		//drv_chb_slv_is_mstr               = 0;
-	//		drv_chb_slv_clock_low_by8         = 0;
-	//		drv_chb_slv_sda_violate           = 0;
-	//		drv_chb_slv_dont_stop             = 0;
-	//		drv_chb_slv_dont_start            = 0;
-	//		drv_chb_slv_stop_after_byte       = 0;
-	//		drv_chb_slv_extra_stop_after_byte  = 4'hF;
-	//		drv_chb_slv_extra_start_after_byte = 4'hF;
-	//		init_drv_chb_slv_bytes();
-	//
-	//	end
-	//endtask
+	task init_drv_chb_slv;
+		begin
+			drv_chb_slv_en = 0;
+			init_drv_chb_slv_bytes();
+		end
+	endtask
 	
+
 	
 	task init_drv_cha_mst_bytes;
 		begin
@@ -479,21 +507,17 @@ module tb();
 	
 	
 	
-	//task init_drv_chb_slv_bytes;
-	//	begin
-	//		drv_chb_slv_byte_0 = 9'h1FF;               ; //[8:0] 
-	//		drv_chb_slv_byte_1 = 9'h1FF;               ; //[8:0] 
-	//		drv_chb_slv_byte_2 = 9'h1FF;               ; //[8:0] 
-	//		drv_chb_slv_byte_3 = 9'h1FF;               ; //[8:0] 
-	//		drv_chb_slv_byte_4 = 9'h1FF;               ; //[8:0] 
-	//		drv_chb_slv_byte_5 = 9'h1FF;               ; //[8:0] 
-	//		drv_chb_slv_byte_6 = 9'h1FF;               ; //[8:0] 
-	//
-	//
-	//	end
-	//endtask
-	
-	
+	task init_drv_chb_slv_bytes;
+		begin
+			drv_chb_slv_byte_0 = 9'h1FF;  
+			drv_chb_slv_byte_1 = 9'h1FF;  
+			drv_chb_slv_byte_2 = 9'h1FF;  
+			drv_chb_slv_byte_3 = 9'h1FF;  
+			drv_chb_slv_byte_4 = 9'h1FF;  
+			drv_chb_slv_byte_5 = 9'h1FF;  
+			drv_chb_slv_byte_6 = 9'h1FF;  
+		end
+	endtask
 	
 	
 	
@@ -512,20 +536,30 @@ module tb();
 	
 	task rst_all_mon;
 		begin
-			mon_mst_clr_all = 0;
-			mon_slv_clr_all = 0;
+			mon_cha_clr_all = 0;
+			mon_chb_clr_all = 0;
 			mon_opt_rstn    = 1;
 			#1;
-			mon_mst_clr_all = 1;
-			mon_slv_clr_all = 1;
+			mon_cha_clr_all = 1;
+			mon_chb_clr_all = 1;
 			mon_opt_rstn    = 0;
 			#1;
-			mon_mst_clr_all = 0;
-			mon_slv_clr_all = 0;
+			mon_cha_clr_all = 0;
+			mon_chb_clr_all = 0;
 			mon_opt_rstn    = 1;
 
 		end
 	endtask
+	
+	
+	task start_cha_mst;
+		begin
+			drv_cha_mst_start = 1;
+			#1;
+			drv_cha_mst_start = 0;
+		end
+	endtask
+
 	
 	
 	function i2c_protocol_test_setaddr;
@@ -563,18 +597,20 @@ module tb();
 	function all_idle;
 		input nc;
 		begin
-			all_idle  = drv_cha_mst_idle && drv_chb_slv_idle && cha_scl && cha_sda && chb_scl && chb_sda;
+			//all_idle  = drv_cha_mst_idle && drv_chb_mst_idle && cha_scl && cha_sda && chb_scl && chb_sda;
+			all_idle  = drv_cha_mst_idle  &&                      cha_scl && cha_sda && chb_scl && chb_sda;
+
 		end
 	endfunction
 	
 	
 	task tb_timeout_fail;
-		input [511:0] substr_err;
+		input [511:0] str_suberr;
 		begin
 				$display("-------  Failed test: %s ------", current_test_name);
 				$display("-------  subpass config: %b ------", current_test_pass_config);
 				$display("    time: %t", $realtime);
-				$display("    %s", str_lalign(substr_err) );
+				$display("    %s", str_lalign(str_suberr) );
 				$display("    testbench timeout occured");
 			failed = 1;
 		end
@@ -587,42 +623,42 @@ module tb();
 		input [8:0] mst_dat;
 		input [8:0] slv_dat;
 		input en_chb_is_mst;
+		
+		reg [511:0] test_type;
+		reg [511:0] test_subtype;
 		begin
 		
+			test_type    = "i2c basic read write test, cha is master";
+			test_subtype = "write address only, no ack, master side" ;
+
+			rst_all_mon();
 			
-			//.i_start                 (drv_cha_mst_start                 ),  
-			//.i_sda_scl_timing_ref    (drv_cha_mst_sda_scl_timing_ref    ), //[31:0]
-			//.i_scl_lo_timing         (drv_cha_mst_scl_lo_timing         ), //[31:0]
-			//.i_scl_hi_timing         (drv_cha_mst_scl_hi_timing         ), //[31:0]
-			//.i_sda_chng_on_rising_scl(drv_cha_mst_sda_chng_on_rising_scl), //      
-			//.i_num_bytes             (drv_cha_mst_num_bytes             ), //[2:0] 
-			//.i_repeatstart_after_byte(drv_cha_mst_repeatstart_after_byte), //[2:0] 
-			//.i_stop_after_byte       (drv_cha_mst_stop_after_byte       ), //[2:0] 
-			//.i_byte_0                (drv_cha_mst_byte_0                ), //[8:0] 
-			//.i_byte_1                (drv_cha_mst_byte_1                ), //[8:0] 
-			//.i_byte_2                (drv_cha_mst_byte_2                ), //[8:0] 
-			//.i_byte_3                (drv_cha_mst_byte_3                ), //[8:0] 
-			//.i_byte_4                (drv_cha_mst_byte_4                ), //[8:0] 
-			//.i_byte_5                (drv_cha_mst_byte_5                ), //[8:0] 
-			//.i_byte_6                (drv_cha_mst_byte_6                ), /
-			
-			drv_cha_mst_sda_scl_timing_ref     = 32'd0;
+			//drv_cha_mst_sda_scl_timing_ref     = 32'd0;
 			drv_cha_mst_scl_lo_timing          = 32'd5000;
 			drv_cha_mst_scl_hi_timing          = 32'd4700;
-			drv_cha_mst_sda_chng_on_rising_scl = 32'd0;
+			//drv_cha_mst_sda_chng_on_rising_scl = 32'd0;
 			
 			drv_cha_mst_num_bytes             = 3'b001;
 			drv_cha_mst_repeatstart_after_byte= 3'b111;
 			drv_cha_mst_stop_after_byte       = 3'b000;
 			drv_cha_mst_byte_0                = mst_dat;
-			
-			drv_cha_mst_start = 1;
-			#1;
-			drv_cha_mst_start = 0;
-			
-			@(drv_cha_mst_idle);
-			
+			start_cha_mst();
+			wait_all_idle(test_type, test_subtype);
 
+			check_expctd_i2c_events( 
+				test_type,
+				test_subtype,
+				32'd11 ,                     //	.num_expctd
+				mon_cha_num_events,          //	.num_actual
+				{                            //	.expctd({
+					`MON_EVENT_S,                                           
+					i2cbyte_to_i2c_event( {8'h00, 1'b0} ),    
+					`MON_EVENT_P                                            
+				},                                                         
+				mon_cha_events               //	.actual
+			);                               //);
+			
+		
 		
 		end
 	endtask
@@ -642,7 +678,7 @@ module tb();
 	endfunction
 	
 
-	
+	//align str to left side
 	function [511:0] str_lalign;
 		input [511:0] str;
 		begin
@@ -661,7 +697,8 @@ module tb();
 	
 
 	task check_expctd_i2c_events;
-		input [511:0] substr_err;
+		input [511:0] str_err;
+		input [511:0] str_suberr;
 		input [31:0]  num_expctd;
 		input [31:0]  num_actual;
 
@@ -672,10 +709,11 @@ module tb();
 		begin
 		
 			if( num_expctd !== num_actual) begin
-				$display("-------  Failed test: %s ------", current_test_name);
-				$display("-------  subpass config: %b ------", current_test_pass_config);
+				$display("-------  Failed test ------");
+				$display("    failure type   : %s", str_lalign( str_err   ));
+				$display("    failure subtype: %s", str_lalign( str_suberr));
 				$display("    time: %t", $realtime);
-				$display("    %s", str_lalign(substr_err) );
+				$display("    %s", str_lalign(str_suberr) );
 				$display("    number of expected events dont match actual");
 				$display("    expected: %d", num_expctd);
 				$display("    actual  : %d", num_actual);
@@ -686,10 +724,10 @@ module tb();
 			for( i=0; (i< num_expctd) && !break_loop; i=i+1'b1) begin
 			
 				if( expctd[ 2*i +: 2] !== actual[ 2*i +: 2]) begin
-					$display("-------  Failed test: %s ------", current_test_name);
-					$display("-------  subpass config: %b ------", current_test_pass_config);
+					$display("-------  Failed test ------");
+					$display("    failure type   : %s", str_lalign( str_err   ));
+					$display("    failure subtype: %s", str_lalign( str_suberr));
 					$display("    time: %t", $realtime);
-					$display("    %s", str_lalign(substr_err));
 					$display("    expected events don't match actual");
 					$write  ("    expected: ");
 					print_i2c_events( num_expctd, expctd);
@@ -755,12 +793,8 @@ module tb();
 					$display("    actual  : %d", actual_cnt_idle_timeout);
 					failed = 1;
 				end
-		
-		
 		end
 	endtask
-	
-
 	
 	
 	function realtime time_elapsed;
@@ -791,6 +825,79 @@ module tb();
 			end
 		end
 	endtask
+	
+	
+	task wait_all_idle;
+		input [511:0] str_err;
+		input [511:0] str_suberr;
+		realtime start_time;
+		begin
+			start_time = $realtime;
+			while( (!all_idle(0)) && (time_elapsed( start_time) < NS_TB_LONG_TIMEOUT) ) begin
+				@(posedge i_clk);
+			end
+			if( !all_idle(0)) fail_tb_timeout(str_err, str_suberr);
+		end
+	endtask
+	
+	
+	//task fail_general;
+	//	input [511:0] str_err;
+	//	input [511:0] str_suberr;
+	//	begin
+	//		$display("-------  Failed test  ------", str_err);
+	//		$display("    failure type    : %s", str_lalign(str_err   ) );
+	//		$display("    failure substype: %s", str_lalign(str_suberr) );
+	//		$display("    time            : %t", $realtime);
+	//		failed = 1;
+	//	end
+	//endtask
+	
+	
+	task fail_tb_timeout;
+		input [511:0] str_err;
+		input [511:0] str_suberr;
+		begin
+			$display("-------  Failed test  ------", str_err);
+			$display("    testbench timeout occured");
+			$display("    failure type    : %s", str_lalign(str_err   ) );
+			$display("    failure substype: %s", str_lalign(str_suberr) );
+			$display("    time            : %t", $realtime);
+			failed = 1;
+		end
+	endtask
+	
+	
+	//task fail_i2c_block_mismatch;
+	//	input [511:0] str_err;
+	//	input [511:0] str_suberr;
+	//	input [8:0]   expctd;
+	//	input [8:0]   actual;
+	//	begin
+	//		$display("-------  Failed test  ------", str_err);
+	//		$display("    i2c block mismatch");
+	//		$display("    failure type    : %s", str_lalign(str_err   ) );
+	//		$display("    failure substype: %s", str_lalign(str_suberr) );
+	//		$display("    time            : %t", $realtime);
+	//		$display("    expected block  : %h", expctd);
+	//		$display("    actual   block  : %h", actual);
+	//		failed = 1;
+	//	end
+	//endtask
+	//
+	//
+	//task check_i2c_block_mismatch;
+	//	input [511:0] str_err;
+	//	input [511:0] str_suberr;
+	//	input [8:0]   expctd;
+	//	input [8:0]   actual;
+	//	begin
+	//		if( expctd !== actual) fail_i2c_block_mismatch(str_err, str_suberr, expctd, actual);
+	//	end
+	//endtask
+	
+
+
 endmodule
 
 

@@ -100,8 +100,10 @@ module driver_msti2c(
 	always @(posedge i_scl) begin
 		if( final_byte && cur_bit_is_last) o_scl = 1'b1; //do nothing
 		else begin
-			if( nxt_bit_is_ctrl) o_scl <= #(2*i_scl_hi_timing) 1'b0;
-			else                 o_scl <= #(  i_scl_hi_timing) 1'b0; //normal data bit
+			if(!o_idle) begin
+				if( nxt_bit_is_ctrl) o_scl <= #(2*i_scl_hi_timing) 1'b0;
+				else                 o_scl <= #(  i_scl_hi_timing) 1'b0; //normal data bit
+			end
 		end
 	end
 	
@@ -114,20 +116,22 @@ module driver_msti2c(
 	//o_sda  logic 
 	always @(i_scl) begin
 	
-		//posedge i_scl
-		if( i_scl) begin
-			if( nxt_bit_is_ctrl) begin
-				o_sda <= #(i_scl_hi_timing) ( stop_byte ? 1'b1 : 1'b0 );
+		if( !o_idle) begin
+			//posedge i_scl
+			if( i_scl) begin
+				if( nxt_bit_is_ctrl) begin
+					o_sda <= #(i_scl_hi_timing) ( stop_byte ? 1'b1 : 1'b0 );
+				end
 			end
-		end
-		//negedge i_scl
-		else begin 
-			if( nxt_bit_is_ctrl) begin
-				o_sda <=  (stop_byte ? 1'b0 : 1'b1);
-			end
-			else begin
-				o_sda <=  all_bytes[NUM_DAT_BITS-1];
-				all_bytes = (all_bytes << 1);
+			//negedge i_scl
+			else begin 
+				if( nxt_bit_is_ctrl) begin
+					o_sda <=  (stop_byte ? 1'b0 : 1'b1);
+				end
+				else begin
+					o_sda <=  all_bytes[NUM_DAT_BITS-1];
+					all_bytes = (all_bytes << 1);
+				end
 			end
 		end
 	end
@@ -198,12 +202,14 @@ module driver_slvi2c(
 	
 	//bit_cnt byte_cnt logic
 	always @(negedge i_scl) begin
-		if( cur_bit_is_ack) begin
-			bit_cnt  <= 0;
-			byte_cnt <= byte_cnt + 1'b1;
-		end 
-		else begin
-			bit_cnt <= bit_cnt + 1'b1;
+		if( i_en) begin
+			if( cur_bit_is_ack) begin
+				bit_cnt  <= 0;
+				byte_cnt <= byte_cnt + 1'b1;
+			end 
+			else begin
+				bit_cnt <= bit_cnt + 1'b1;
+			end
 		end
 	end
 	

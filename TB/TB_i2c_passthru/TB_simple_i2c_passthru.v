@@ -612,6 +612,50 @@ module tb();
 	endtask
 	
 	
+	task copy_drv_cha_mst_args_to_chb;
+		begin
+			
+			drv_chb_mst_start                  = drv_cha_mst_start                  ;
+			drv_chb_mst_scl_lo_timing          = drv_cha_mst_scl_lo_timing          ;
+			drv_chb_mst_scl_hi_timing          = drv_cha_mst_scl_hi_timing          ;
+			drv_chb_mst_num_bytes              = drv_cha_mst_num_bytes              ;
+			drv_chb_mst_repeatstart_after_byte = drv_cha_mst_repeatstart_after_byte ;
+			drv_chb_mst_stop_after_byte        = drv_cha_mst_stop_after_byte        ;
+			
+			copy_drv_cha_mst_bytes_to_chb();
+			
+		end
+	endtask
+	
+	
+	task copy_drv_cha_mst_bytes_to_chb;
+		begin
+			drv_chb_mst_byte_0 = drv_cha_mst_byte_0;  
+			drv_chb_mst_byte_1 = drv_cha_mst_byte_1;  
+			drv_chb_mst_byte_2 = drv_cha_mst_byte_2;  
+			drv_chb_mst_byte_3 = drv_cha_mst_byte_3;  
+			drv_chb_mst_byte_4 = drv_cha_mst_byte_4;  
+			drv_chb_mst_byte_5 = drv_cha_mst_byte_5;  
+			drv_chb_mst_byte_6 = drv_cha_mst_byte_6;  
+		
+		end
+	endtask
+	
+	
+	task copy_drv_cha_slv_bytes_to_chb;
+		begin
+			drv_chb_slv_byte_0 = drv_cha_slv_byte_0;  
+			drv_chb_slv_byte_1 = drv_cha_slv_byte_1;  
+			drv_chb_slv_byte_2 = drv_cha_slv_byte_2;  
+			drv_chb_slv_byte_3 = drv_cha_slv_byte_3;  
+			drv_chb_slv_byte_4 = drv_cha_slv_byte_4;  
+			drv_chb_slv_byte_5 = drv_cha_slv_byte_5;  
+			drv_chb_slv_byte_6 = drv_cha_slv_byte_6;  
+		
+		end
+	endtask
+	
+	
 	
 	task rst_uut;
 		begin
@@ -651,8 +695,16 @@ module tb();
 			drv_cha_mst_start = 0;
 		end
 	endtask
-
 	
+	
+	task start_chb_mst;
+		begin
+			drv_chb_mst_start = 1;
+			#1;
+			drv_chb_mst_start = 0;
+		end
+	endtask
+
 	
 	function i2c_protocol_test_setaddr;
 		input [1:0] conf;
@@ -670,9 +722,23 @@ module tb();
 	task i2c_protocol_basic_test;
 		begin
 			//current_test_name = "i2c_protocol_basic_test";
+			
+			i2c_protocol_addr_r_nack_stop( "i2c test address only", 1'b0);
+			i2c_protocol_addr_r_nack_stop( "i2c test address only", 1'b1);
+			
+			i2c_protocol_addr_w_nack_stop( "i2c test address only", 1'b0);
+			i2c_protocol_addr_w_nack_stop( "i2c test address only", 1'b1);
+			
+			i2c_protocol_addr_r_ack_stop ( "i2c test address only", 1'b0);
+			i2c_protocol_addr_r_ack_stop ( "i2c test address only", 1'b1);
 
-			i2c_protocol_basic_test_pass( 9'h00, 9'h00, 1'b0);
-			#5000;
+
+			
+			
+			
+			//#10_000;
+			//i2c_protocol_basic_test_pass( 8'h00, 9'h00, 1'b0);
+			//#5000;
 			//i2c_protocol_basic_test_pass( 9'h00, 9'h00, 1'b1);
 			//i2c_protocol_basic_test_pass( 9'h55, 9'hAA, 1'b0);
 			//i2c_protocol_basic_test_pass( 9'h55, 9'hAA, 1'b1);
@@ -707,41 +773,289 @@ module tb();
 	//endtask
 	
 	
+	task i2c_protocol_addr_r_nack_stop;
+		input [511:0] test_type;
+		input en_chb_is_mst;
+
+		reg   [511:0] test_subtype;
+		reg   [  6:0] i2c_addr;
+		begin
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				test_subtype = "address, read mode,  no ack, stop" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+				
+				i2c_addr = 7'h2A;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				init_drv_cha_slv_bytes();
+				copy_drv_cha_slv_bytes_to_chb();
+				drv_cha_slv_en =  en_chb_is_mst;
+				drv_chb_slv_en = !en_chb_is_mst;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b001;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b000;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {i2c_addr, 1'b1, 1'b1};
+				
+				copy_drv_cha_mst_args_to_chb();
+				
+				if( en_chb_is_mst)   start_chb_mst();
+				else                 start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+					32'd11 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+
+					32'd11 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				#5000;
+				
+		end
+	endtask
+	
+	
+	
+	task i2c_protocol_addr_w_nack_stop;
+		input [511:0] test_type;
+		input en_chb_is_mst;
+
+		reg   [511:0] test_subtype;
+		reg   [  6:0] i2c_addr;
+		begin
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				test_subtype = "address, write mode,  no ack, stop" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+				
+				i2c_addr = 7'h2A;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				init_drv_cha_slv_bytes();
+				copy_drv_cha_slv_bytes_to_chb();
+				drv_cha_slv_en =  en_chb_is_mst;
+				drv_chb_slv_en = !en_chb_is_mst;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b001;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b000;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {i2c_addr, 1'b0, 1'b1};
+				
+				copy_drv_cha_mst_args_to_chb();
+				
+				if( en_chb_is_mst)   start_chb_mst();
+				else                 start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+
+					32'd11 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b0, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+
+					32'd11 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b0, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				#5000;
+				
+		end
+	endtask
+	
+	
+	task i2c_protocol_addr_r_ack_stop;
+		input [511:0] test_type;
+		input en_chb_is_mst;
+
+		reg   [511:0] test_subtype;
+		reg   [  6:0] i2c_addr;
+		begin
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				test_subtype = "address, read mode,  ack, stop" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+				
+				i2c_addr = 7'h2A;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				init_drv_cha_slv_bytes();
+				drv_cha_slv_byte_0 = {8'hFF, 1'b0};
+				drv_cha_slv_byte_1 = {8'h00, 1'b1};
+				copy_drv_cha_slv_bytes_to_chb();
+				drv_cha_slv_en =  en_chb_is_mst;
+				drv_chb_slv_en = !en_chb_is_mst;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b001;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b000;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {i2c_addr, 1'b1, 1'b1};
+				
+				copy_drv_cha_mst_args_to_chb();
+				
+				if( en_chb_is_mst)   start_chb_mst();
+				else                 start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+					32'd11 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+					32'd11 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				#5000;
+				
+		end
+	endtask
+	
+	
 	
 	
 	task i2c_protocol_basic_test_pass;
-		input [8:0] mst_dat;
-		input [8:0] slv_dat;
+		input [7:0] mst_dat;
+		input [7:0] slv_dat;
 		input en_chb_is_mst;
 		
 		reg [511:0] test_type;
 		reg [511:0] test_subtype;
 		begin
 		
-			test_type    = "i2c basic read write test, cha is master";
+			test_type    = "i2c basic read write test";
 			mon_cha_test_type    = test_type   ;
 			mon_chb_test_type    = test_type   ;
 
 			
-			//first test
-			test_subtype = "write address only, no ack, master side" ;
+			// =======  first test =================
+			test_subtype = "write address only, no ack" ;
 			mon_cha_test_subtype = test_subtype;
 			mon_chb_test_subtype = test_subtype;
 			
-
+			//setup monitors
 			rst_all_mon();
 			mon_cha_en_timing_check = 1;
 			mon_chb_en_timing_check = 1;
 			
+			//setup slaves
+			init_drv_cha_slv_bytes();
+			copy_drv_cha_slv_bytes_to_chb();
+			drv_cha_slv_en =  en_chb_is_mst;
+			drv_chb_slv_en = !en_chb_is_mst;
+			
+			//setup master
 			drv_cha_mst_scl_lo_timing          = 32'd5000;
 			drv_cha_mst_scl_hi_timing          = 32'd4700;
 			
 			drv_cha_mst_num_bytes             = 3'b001;
 			drv_cha_mst_repeatstart_after_byte= 3'b111;
 			drv_cha_mst_stop_after_byte       = 3'b000;
-			drv_cha_mst_byte_0                = mst_dat;
-			start_cha_mst();
-			wait_all_idle(test_type, test_subtype);
+			
+			init_drv_cha_mst_bytes();
+			drv_cha_mst_byte_0                = {mst_dat, 1'b1};
+			
+			copy_drv_cha_mst_args_to_chb();
+			
+			if( en_chb_is_mst)   start_chb_mst();
+			else                 start_cha_mst();
+			
+			wait_all_idle(test_type, test_subtype, NS_TB_LONG_TIMEOUT);
 
 			check_expctd_i2c_events( 
 				test_type,
@@ -750,12 +1064,25 @@ module tb();
 				mon_cha_num_events,          //	.num_actual
 				{                            //	.expctd({
 					`MON_EVENT_S,                                           
-					i2cbyte_to_i2c_event( {8'h00, 1'b0} ),    
+					i2cbyte_to_i2c_event( {8'h00, 1'b1} ),    
 					`MON_EVENT_P                                            
 				},                                                         
 				mon_cha_events               //	.actual
 			);                               //);
 			
+			check_expctd_i2c_events( 
+				test_type,
+				test_subtype,
+				32'd11 ,                     //	.num_expctd
+				mon_chb_num_events,          //	.num_actual
+				{                            //	.expctd({
+					`MON_EVENT_S,                                           
+					i2cbyte_to_i2c_event( {8'h00, 1'b1} ),    
+					`MON_EVENT_P                                            
+				},                                                         
+				mon_chb_events               //	.actual
+			);                               //);
+			#5000;
 
 		end
 	endtask
@@ -927,10 +1254,14 @@ module tb();
 	task wait_all_idle;
 		input [511:0] str_err;
 		input [511:0] str_suberr;
+		input realtime timeout_time;
+		
 		realtime start_time;
 		begin
 			start_time = $realtime;
-			while( (!all_idle(0)) && (time_elapsed( start_time) < NS_TB_LONG_TIMEOUT) ) begin
+			//while( (!all_idle(0)) && (time_elapsed( start_time) < NS_TB_LONG_TIMEOUT) ) begin
+			while( (!all_idle(0)) && (time_elapsed( start_time) < timeout_time) ) begin
+
 				@(posedge i_clk);
 			end
 			if( !all_idle(0)) fail_tb_timeout(str_err, str_suberr);

@@ -54,6 +54,7 @@ module i2c_passthru_rxtx_ctrl(
 	reg read_mode      , nxt_read_mode      ;
 	reg ack_failed     , nxt_ack_failed     ;
 	reg slv_on_mst_side, nxt_slv_on_mst_side;
+	reg read_mode_early, nxt_read_mode_early;
 	
 	//reg nxt_slv_is_rx;
 	//reg set_slv_is_rx;
@@ -61,7 +62,7 @@ module i2c_passthru_rxtx_ctrl(
 	//reg set_mst_is_rx;
 	//reg clr_mst_is_rx;
 	
-	reg bit_willbe_slv_rx;
+	reg bit_willbe_rx_from_slv;
 	wire bit_willbe_ack;
 	wire bit_is_ack;
 	wire bit_is_read;
@@ -93,23 +94,23 @@ module i2c_passthru_rxtx_ctrl(
 
 	always @(*) begin
 		case( {slv_on_mst_side, bit_willbe_ack, read_mode, ack_failed} )
-			4'b0000: bit_willbe_slv_rx = 0;
-			4'b0001: bit_willbe_slv_rx = 0;
-			4'b0010: bit_willbe_slv_rx = 0;
-			4'b0011: bit_willbe_slv_rx = 1;
-			4'b0100: bit_willbe_slv_rx = 1;
-			4'b0101: bit_willbe_slv_rx = 1;
-			4'b0110: bit_willbe_slv_rx = 0;
-			4'b0111: bit_willbe_slv_rx = 0;
-			4'b1000: bit_willbe_slv_rx = 0;
-			4'b1001: bit_willbe_slv_rx = 0;
-			4'b1010: bit_willbe_slv_rx = 0;
-			4'b1011: bit_willbe_slv_rx = 0;
-			4'b1100: bit_willbe_slv_rx = 0;
-			4'b1101: bit_willbe_slv_rx = 0;
-			4'b1110: bit_willbe_slv_rx = 0;
-			4'b1111: bit_willbe_slv_rx = 0;
-			default: bit_willbe_slv_rx = 0;
+			4'b0000: bit_willbe_rx_from_slv = 0;  //4'b0000: bit_willbe_rx_from_slv = 0;
+			4'b0001: bit_willbe_rx_from_slv = 0;  //4'b0001: bit_willbe_rx_from_slv = 0;
+			4'b0010: bit_willbe_rx_from_slv = 1;  //4'b0010: bit_willbe_rx_from_slv = 0;
+			4'b0011: bit_willbe_rx_from_slv = 0;  //4'b0011: bit_willbe_rx_from_slv = 1;
+			4'b0100: bit_willbe_rx_from_slv = 1;  //4'b0100: bit_willbe_rx_from_slv = 1;
+			4'b0101: bit_willbe_rx_from_slv = 0;  //4'b0101: bit_willbe_rx_from_slv = 1;
+			4'b0110: bit_willbe_rx_from_slv = 0;  //4'b0110: bit_willbe_rx_from_slv = 0;
+			4'b0111: bit_willbe_rx_from_slv = 0;  //4'b0111: bit_willbe_rx_from_slv = 0;
+			4'b1000: bit_willbe_rx_from_slv = 0;  //4'b1000: bit_willbe_rx_from_slv = 0;
+			4'b1001: bit_willbe_rx_from_slv = 0;  //4'b1001: bit_willbe_rx_from_slv = 0;
+			4'b1010: bit_willbe_rx_from_slv = 0;  //4'b1010: bit_willbe_rx_from_slv = 0;
+			4'b1011: bit_willbe_rx_from_slv = 0;  //4'b1011: bit_willbe_rx_from_slv = 0;
+			4'b1100: bit_willbe_rx_from_slv = 0;  //4'b1100: bit_willbe_rx_from_slv = 0;
+			4'b1101: bit_willbe_rx_from_slv = 0;  //4'b1101: bit_willbe_rx_from_slv = 0;
+			4'b1110: bit_willbe_rx_from_slv = 0;  //4'b1110: bit_willbe_rx_from_slv = 0;
+			4'b1111: bit_willbe_rx_from_slv = 0;  //4'b1111: bit_willbe_rx_from_slv = 0;
+			default: bit_willbe_rx_from_slv = 0;  //default: bit_willbe_rx_from_slv = 0;
 
 		endcase
 	end
@@ -135,7 +136,7 @@ module i2c_passthru_rxtx_ctrl(
 			ST_MST_RX_WAIT  : 
 			begin
 				if( i_rx_done && i_tx_done) begin
-					if( bit_willbe_slv_rx)  nxt_state = ST_SLV_RX_START;
+					if( bit_willbe_rx_from_slv)  nxt_state = ST_SLV_RX_START;
 					else                    nxt_state = ST_MST_RX_START;
 				end
 			end
@@ -153,7 +154,7 @@ module i2c_passthru_rxtx_ctrl(
 				o_tx_to_mst = 1'b1;
 
 				if( i_rx_done && i_tx_done) begin
-					if( bit_willbe_slv_rx)  nxt_state = ST_SLV_RX_START;
+					if( bit_willbe_rx_from_slv)  nxt_state = ST_SLV_RX_START;
 					else                    nxt_state = ST_MST_RX_START;
 				end
 			end
@@ -197,12 +198,26 @@ module i2c_passthru_rxtx_ctrl(
 		else              nxt_first_byte_n = first_byte_n;
 	end
 	
+	////determine read mode
+	//always @(*) begin
+	//	if( bit_is_read && i_rx_sda_init_valid) 
+	//		nxt_read_mode = i_rx_sda_init;
+	//	else
+	//		nxt_read_mode = read_mode;
+	//end
+	
 	//determine read mode
 	always @(*) begin
 		if( bit_is_read && i_rx_sda_init_valid) 
-			nxt_read_mode = i_rx_sda_init;
+			nxt_read_mode_early = i_rx_sda_init;
 		else
-			nxt_read_mode = read_mode;
+			nxt_read_mode_early = read_mode_early;
+	end
+	
+	//buffer read mode
+	always @(*) begin
+		if( o_start )   nxt_read_mode = read_mode_early ;
+		else            nxt_read_mode = read_mode;
 	end
 	
 	
@@ -227,8 +242,9 @@ module i2c_passthru_rxtx_ctrl(
 			bit_cnt         <= nxt_bit_cnt         ;
 			first_byte_n    <= nxt_first_byte_n    ;
 			read_mode       <= nxt_read_mode       ;
+			read_mode_early <= nxt_read_mode_early ;
 			ack_failed      <= nxt_ack_failed      ;
-			slv_on_mst_side <=  nxt_slv_on_mst_side;
+			slv_on_mst_side <= nxt_slv_on_mst_side;
 
 		
 		end 
@@ -237,8 +253,9 @@ module i2c_passthru_rxtx_ctrl(
 			bit_cnt         <= 4'h0;
 			first_byte_n    <= 1'b0;
 			read_mode       <= 1'b0;
+			read_mode_early <= 1'b0;
 			ack_failed      <= 1'b0;
-			slv_on_mst_side <=  1'b0;
+			slv_on_mst_side <= 1'b0;
 			
 			
 		end

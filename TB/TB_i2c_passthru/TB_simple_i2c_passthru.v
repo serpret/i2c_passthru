@@ -974,34 +974,73 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
-	
-				check_expctd_i2c_events( 
-					test_type,
-					{test_subtype[0 +: 480], " channel A"},
-					32'd11 ,                     //	.num_expctd
-					mon_cha_num_events,          //	.num_actual
-					{                            //	.expctd({
-						`MON_EVENT_S,                                           
-						i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b1} ),    
-						`MON_EVENT_P                                            
-					},                                                         
-					mon_cha_events               //	.actual
-				);                               //);
 				
-				check_expctd_i2c_events( 
-					test_type,
-					{test_subtype[0 +: 480], " channel B"},
-					32'd11 ,                     //	.num_expctd
-					mon_chb_num_events,          //	.num_actual
-					{                            //	.expctd({
-						`MON_EVENT_S,                                           
-						i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b1} ),    
-						`MON_EVENT_P                                            
-					},                                                         
-					mon_chb_events               //	.actual
-				);                               //);
+				if( en_chb_is_mst)  wait_chb_mst_done(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
+				else                wait_cha_mst_done(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
+				
 				#5000;
+				
+				if( en_chb_is_mst) begin
+					check_expctd_i2c_events( 
+						test_type,
+						{test_subtype[0 +: 480], " channel A"},
+						32'd11 ,                     //	.num_expctd
+						mon_cha_num_events,          //	.num_actual
+						{                            //	.expctd({
+							`MON_EVENT_S,                                           
+							i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b0} ),
+							`MON_EVENT_0
+
+						},                                                         
+						mon_cha_events               //	.actual
+					);                               //);
+					
+					check_expctd_i2c_events( 
+						test_type,
+						{test_subtype[0 +: 480], " channel B"},
+						32'd10 ,                     //	.num_expctd
+						mon_chb_num_events,          //	.num_actual
+						{                            //	.expctd({
+							`MON_EVENT_S,                                           
+							i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b0} )
+						},                                                         
+						mon_chb_events               //	.actual
+					);                               //);
+				end
+				else begin
+					check_expctd_i2c_events( 
+						test_type,
+						{test_subtype[0 +: 480], " channel A"},
+						32'd10 ,                     //	.num_expctd
+						mon_cha_num_events,          //	.num_actual
+						{                            //	.expctd({
+							`MON_EVENT_S,                                           
+							i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b0} )
+							
+						},                                                         
+						mon_cha_events               //	.actual
+					);                               //);
+					
+					check_expctd_i2c_events( 
+						test_type,
+						{test_subtype[0 +: 480], " channel B"},
+						32'd11 ,                     //	.num_expctd
+						mon_chb_num_events,          //	.num_actual
+						{                            //	.expctd({
+							`MON_EVENT_S,                                           
+							i2cbyte_to_i2c_event( {7'h2A, 1'b1, 1'b0} ),
+							`MON_EVENT_0
+						},                                                         
+						mon_chb_events               //	.actual
+					);                               //);
+				
+				end
+				
+				
+				wait_all_idle(test_type, test_subtype, NS_T_BUS_STUCK_MAX);
+
+				//#5000;
+				#NS_T_HI_MAX;
 				
 		end
 	endtask
@@ -1265,6 +1304,40 @@ module tb();
 				@(posedge i_clk);
 			end
 			if( !all_idle(0)) fail_tb_timeout(str_err, str_suberr);
+		end
+	endtask
+	
+	
+	task wait_cha_mst_done;
+		input [511:0] str_err;
+		input [511:0] str_suberr;
+		input realtime timeout_time;
+		
+		realtime start_time;
+		begin
+			start_time = $realtime;
+			
+			while( !drv_cha_mst_idle && (time_elapsed( start_time) < timeout_time) ) begin
+				@(posedge i_clk);
+			end
+			if( !drv_cha_mst_idle) fail_tb_timeout(str_err, str_suberr);
+		end
+	endtask
+	
+	
+	task wait_chb_mst_done;
+		input [511:0] str_err;
+		input [511:0] str_suberr;
+		input realtime timeout_time;
+		
+		realtime start_time;
+		begin
+			start_time = $realtime;
+			
+			while( !drv_chb_mst_idle && (time_elapsed( start_time) < timeout_time) ) begin
+				@(posedge i_clk);
+			end
+			if( !drv_chb_mst_idle) fail_tb_timeout(str_err, str_suberr);
 		end
 	endtask
 	

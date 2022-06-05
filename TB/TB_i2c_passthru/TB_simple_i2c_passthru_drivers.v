@@ -107,10 +107,11 @@ module driver_msti2c(
 		end
 	end
 	
-	//bit_cnt
+	//bit_cnt  byte_cnt
 	always @(posedge i_scl) begin
 		//bit_cnt <= ( cur_bit_is_last ) ? 0 : bit_cnt + 1'b1;
-		bit_cnt <= (cur_bit_is_last && !nxt_bit_is_ctrl) ? 0 : bit_cnt + 1'b1;
+		bit_cnt <= (cur_bit_is_last && !nxt_bit_is_ctrl) ?               1 : bit_cnt + 1'b1;
+		byte_cnt<= (cur_bit_is_last && !nxt_bit_is_ctrl) ? byte_cnt + 1'b1 :       byte_cnt;
 	end
 	
 	//o_sda  logic 

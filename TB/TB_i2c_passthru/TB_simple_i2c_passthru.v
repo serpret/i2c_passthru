@@ -165,6 +165,8 @@ module tb();
 	reg [8:0] drv_cha_slv_byte_5  ;  
 	reg [8:0] drv_cha_slv_byte_6  ;
 	
+	reg [2:0] drv_cha_slv_hiz_after_byte;
+	
 	wire drv_cha_slv_sda ;
 	
 		//chb
@@ -177,6 +179,8 @@ module tb();
 	reg [8:0] drv_chb_slv_byte_4  ;
 	reg [8:0] drv_chb_slv_byte_5  ;  
 	reg [8:0] drv_chb_slv_byte_6  ;
+	
+	reg [2:0] drv_chb_slv_hiz_after_byte;
 	
 	wire drv_chb_slv_sda ;
 	
@@ -343,6 +347,8 @@ module tb();
 		.i_byte_5(drv_cha_slv_byte_5),   
 		.i_byte_6(drv_cha_slv_byte_6),
 		
+		.i_extra_hiz_bit_after_byte( drv_cha_slv_hiz_after_byte ),
+		
 		.o_sda   (drv_cha_slv_sda   )
 	);
 	
@@ -358,6 +364,9 @@ module tb();
 		.i_byte_4(drv_chb_slv_byte_4),
 		.i_byte_5(drv_chb_slv_byte_5),   
 		.i_byte_6(drv_chb_slv_byte_6),
+		
+		.i_extra_hiz_bit_after_byte( drv_chb_slv_hiz_after_byte ),
+
 		
 		.o_sda   (drv_chb_slv_sda   )
 	);
@@ -547,6 +556,7 @@ module tb();
 	task init_drv_cha_slv;
 		begin
 			drv_cha_slv_en = 0;
+			drv_cha_slv_hiz_after_byte = 3'b111;
 			init_drv_cha_slv_bytes();
 		end
 	endtask
@@ -554,6 +564,8 @@ module tb();
 	task init_drv_chb_slv;
 		begin
 			drv_chb_slv_en = 0;
+			drv_chb_slv_hiz_after_byte = 3'b111;
+
 			init_drv_chb_slv_bytes();
 		end
 	endtask
@@ -638,6 +650,15 @@ module tb();
 			drv_chb_mst_byte_5 = drv_cha_mst_byte_5;  
 			drv_chb_mst_byte_6 = drv_cha_mst_byte_6;  
 		
+		end
+	endtask
+	
+	
+	task copy_drv_cha_slv_args_to_chb;
+		begin
+		
+			drv_chb_slv_hiz_after_byte = drv_cha_slv_hiz_after_byte;
+			copy_drv_cha_slv_bytes_to_chb();
 		end
 	endtask
 	
@@ -743,8 +764,7 @@ module tb();
 			
 			i2c_protocol_addr_r_2byte_data( "i2c test write data", 1'b0);
 			i2c_protocol_addr_r_2byte_data( "i2c test write data", 1'b1);
-			
-			
+
 			i2c_protocol_addr_w_1byte_sr_addr_r_1byte( "i2c test write data", 1'b0);
 			i2c_protocol_addr_w_1byte_sr_addr_r_1byte( "i2c test write data", 1'b1);
 			
@@ -1433,7 +1453,8 @@ module tb();
 				mon_cha_test_type    = test_type   ;
 				mon_chb_test_type    = test_type   ;
 				
-				test_subtype = "address, write   ack, 1 byte , repeat start, address, read, 1 byte" ;
+				///////////////"123456789abcdef 123456789abcdef 123456789abcdef 123456789abcdef 
+				test_subtype = "addr wr ack, 1 byte , repeat start, addr, rd, 1 byte" ;
 				mon_cha_test_subtype = test_subtype;
 				mon_chb_test_subtype = test_subtype;
 				
@@ -1446,6 +1467,8 @@ module tb();
 				mon_chb_en_timing_check = 1;
 				
 				//setup slaves
+				drv_cha_slv_hiz_after_byte = 3'b001;
+				
 				init_drv_cha_slv_bytes();
 				drv_cha_slv_byte_0 = {   8'hFF, 1'b0};
 				drv_cha_slv_byte_1 = {   8'hFF, 1'b0};
@@ -1454,7 +1477,7 @@ module tb();
 				drv_cha_slv_byte_4 = {1'b1, 8'bxxxx_xxxx};
 
 	
-				copy_drv_cha_slv_bytes_to_chb();
+				copy_drv_cha_slv_args_to_chb();
 				drv_cha_slv_en =  en_chb_is_mst;
 				drv_chb_slv_en = !en_chb_is_mst;
 				
@@ -1482,14 +1505,15 @@ module tb();
 				check_expctd_i2c_events( 
 					test_type,
 					{test_subtype[0 +: 480], " channel A"},
-					32'd29 ,                     //	.num_expctd
+					32'd39 ,                     //	.num_expctd
 					mon_cha_num_events,          //	.num_actual
 					{                            //	.expctd({
 						`MON_EVENT_S,                                           
-						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b0, 1'b0} ),
 						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
+						`MON_EVENT_S,
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
 						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
-
 						`MON_EVENT_P                                            
 					},                                                         
 					mon_cha_events               //	.actual
@@ -1499,12 +1523,14 @@ module tb();
 					test_type,
 					{test_subtype[0 +: 480], " channel B"},
 
-					32'd29 ,                     //	.num_expctd
+					32'd39 ,                     //	.num_expctd
 					mon_chb_num_events,          //	.num_actual
 					{                            //	.expctd({
 						`MON_EVENT_S,                                           
-						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b0, 1'b0} ),
 						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
+						`MON_EVENT_S,
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
 						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
 						`MON_EVENT_P                                            
 					},                                                         

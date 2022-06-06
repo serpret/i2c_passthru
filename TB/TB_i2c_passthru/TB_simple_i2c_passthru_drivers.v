@@ -45,7 +45,9 @@ module driver_msti2c(
 	reg [NUM_DAT_BITS-1:0] all_bytes;
 	reg [3:0] bit_cnt;
 	reg [3:0] byte_cnt;
-	reg       nxt_bit_is_ctrl;
+	
+	wire       nxt_bit_is_ctrl;
+	wire       cur_bit_is_ctrl;
 	
 	wire final_byte;
 	wire stop_byte;
@@ -59,6 +61,7 @@ module driver_msti2c(
 	//assign cur_bit_is_almost_last    = (4'h7 === bit_cnt);
 	
 	assign nxt_bit_is_ctrl = (stop_byte || repeatstart_byte) && cur_bit_is_last;
+	assign cur_bit_is_ctrl = (stop_byte || repeatstart_byte) && ( bit_cnt == 4'ha);
 
 
 	initial begin
@@ -110,8 +113,8 @@ module driver_msti2c(
 	//bit_cnt  byte_cnt
 	always @(posedge i_scl) begin
 		//bit_cnt <= ( cur_bit_is_last ) ? 0 : bit_cnt + 1'b1;
-		bit_cnt <= (cur_bit_is_last && !nxt_bit_is_ctrl) ?               1 : bit_cnt + 1'b1;
-		byte_cnt<= (cur_bit_is_last && !nxt_bit_is_ctrl) ? byte_cnt + 1'b1 :       byte_cnt;
+		bit_cnt <= (cur_bit_is_last && !nxt_bit_is_ctrl) || cur_bit_is_ctrl ?               1 : bit_cnt + 1'b1;
+		byte_cnt<= (cur_bit_is_last && !nxt_bit_is_ctrl) || cur_bit_is_ctrl ? byte_cnt + 1'b1 :       byte_cnt;
 	end
 	
 	//o_sda  logic 
@@ -160,6 +163,11 @@ module driver_slvi2c(
 	input [8:0] i_byte_5  ,   
 	input [8:0] i_byte_6  ,
 	
+	//insert one extra high impedance bit after below byte 
+	//(set to 3'b111 to not insert)
+	//useful to accomodate a repeat start from a master.
+	input [2:0] i_extra_hiz_bit_after_byte, 
+	
 	output o_sda
 );
 
@@ -170,9 +178,12 @@ module driver_slvi2c(
 	
 
 	wire cur_bit_is_ack;
+	wire cur_bit_is_extra;
 
 	
-	assign cur_bit_is_ack  = (4'h8 == bit_cnt);
+	assign cur_bit_is_ack       = (4'h8 == bit_cnt);
+	assign cur_bit_is_extra     = (4'h9 == bit_cnt);
+	assign nxt_bit_is_extra_hiz = (4'h8 == bit_cnt) && (i_extra_hiz_bit_after_byte == byte_cnt);
 	
 	//byte selection
 	always @(*) begin
@@ -204,13 +215,33 @@ module driver_slvi2c(
 	//bit_cnt byte_cnt logic
 	always @(negedge i_scl) begin
 		if( i_en) begin
-			if( cur_bit_is_ack) begin
+		
+			if( nxt_bit_is_extra_hiz) begin
+				bit_cnt <= bit_cnt + 1'b1;
+			end
+			else if( cur_bit_is_ack || cur_bit_is_extra ) begin
 				bit_cnt  <= 0;
 				byte_cnt <= byte_cnt + 1'b1;
 			end 
 			else begin
 				bit_cnt <= bit_cnt + 1'b1;
 			end
+			
+			//if( nxt_bit_is_extra_hiz || !cur_bit_is_ack) begin
+			//	bit_cnt <= bit_cnt + 1'b1;
+			//end
+			//else begin
+			//	bit_cnt  <= 0;
+			//	byte_cnt <= byte_cnt + 1'b1;
+			//end
+			
+			//if( cur_bit_is_ack) begin
+			//	bit_cnt  <= 0;
+			//	byte_cnt <= byte_cnt + 1'b1;
+			//end 
+			//else begin
+			//	bit_cnt <= bit_cnt + 1'b1;
+			//end
 		end
 	end
 	

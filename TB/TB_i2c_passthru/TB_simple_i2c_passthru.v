@@ -764,9 +764,12 @@ module tb();
 			
 			i2c_protocol_addr_r_2byte_data( "i2c test write data", 1'b0);
 			i2c_protocol_addr_r_2byte_data( "i2c test write data", 1'b1);
-
+			
 			i2c_protocol_addr_w_1byte_sr_addr_r_1byte( "i2c test write data", 1'b0);
 			i2c_protocol_addr_w_1byte_sr_addr_r_1byte( "i2c test write data", 1'b1);
+			
+			i2c_protocol_addr_w_1byte_sr_addr_r_2byte( "i2c test write data", 1'b0);
+			i2c_protocol_addr_w_1byte_sr_addr_r_2byte( "i2c test write data", 1'b1);
 			
 
 			//#10_000;
@@ -1531,6 +1534,113 @@ module tb();
 						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
 						`MON_EVENT_S,
 						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				#5000;
+				
+		end
+	endtask
+	
+	
+	
+	
+	task i2c_protocol_addr_w_1byte_sr_addr_r_2byte;
+		input [511:0] test_type;
+		input en_chb_is_mst;
+
+		reg   [511:0] test_subtype;
+		reg   [  6:0] i2c_addr;
+		reg   [  7:0] i2c_data;
+		begin
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				///////////////"123456789abcdef 123456789abcdef 123456789abcdef 123456789abcdef 
+				test_subtype = "addr wr ack, 1 byte , repeat start, addr, rd, 2 byte" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+				
+				i2c_addr = 7'h55;
+				i2c_data = 8'hAA;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				drv_cha_slv_hiz_after_byte = 3'b001;
+				
+				init_drv_cha_slv_bytes();
+				drv_cha_slv_byte_0 = {   8'hFF, 1'b0};
+				drv_cha_slv_byte_1 = {   8'hFF, 1'b0};
+				drv_cha_slv_byte_2 = {   8'hFF, 1'b0};
+				drv_cha_slv_byte_3 = {i2c_data, 1'b1};
+				drv_cha_slv_byte_4 = {i2c_data, 1'b1};
+				drv_cha_slv_byte_5 = {1'b1, 8'bxxxx_xxxx};
+
+	
+				copy_drv_cha_slv_args_to_chb();
+				drv_cha_slv_en =  en_chb_is_mst;
+				drv_chb_slv_en = !en_chb_is_mst;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b101;
+				drv_cha_mst_repeatstart_after_byte= 3'b001;
+				drv_cha_mst_stop_after_byte       = 3'b100;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {i2c_addr, 1'b0, 1'b1};
+				drv_cha_mst_byte_1                = {      i2c_data, 1'b1};
+				drv_cha_mst_byte_2                = {i2c_addr, 1'b1, 1'b1};
+				drv_cha_mst_byte_3                = {         8'hFF, 1'b0};
+				drv_cha_mst_byte_4                = {         8'hFF, 1'b1};
+
+
+				copy_drv_cha_mst_args_to_chb();
+				
+				if( en_chb_is_mst)   start_chb_mst();
+				else                 start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+					32'd48 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b0, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
+						`MON_EVENT_S,
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+
+					32'd48 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b0, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
+						`MON_EVENT_S,
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} ),
 						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
 						`MON_EVENT_P                                            
 					},                                                         

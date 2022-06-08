@@ -774,6 +774,8 @@ module tb();
 			i2c_fast_test1( "i2c master is high speed", 1'b0);
 			i2c_fast_test1( "i2c master is high speed", 1'b1);
 			
+			i2c_multi_master_test( "i2c test multi-master");
+			
 			//#10_000;
 			//i2c_protocol_basic_test_pass( 8'h00, 9'h00, 1'b0);
 			//#5000;
@@ -1738,6 +1740,130 @@ module tb();
 					mon_chb_events               //	.actual
 				);                               //);
 				#5000;
+				
+				
+				
+				
+				
+		end
+	endtask
+	
+	
+	
+	task i2c_multi_master_test;
+		input [511:0] test_type;
+
+		reg   [511:0] test_subtype;
+		//reg   [  6:0] i2c_addr;
+		//reg   [  7:0] i2c_data;
+		begin
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				//stage A, simulate a multi-master conflict, make sure timing is good
+				test_subtype = "i2c multi-master test1, stageA" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+				
+				//i2c_addr = 7'h55;
+				//i2c_data = 8'hAA;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1'b1;
+				mon_chb_en_timing_check = 1'b1;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				
+				init_drv_cha_mst_bytes();
+				copy_drv_cha_mst_args_to_chb();
+				
+				
+				drv_cha_mst_num_bytes             = 3'b010;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b001;
+				drv_cha_mst_byte_0                = {7'h20, 1'b1, 1'b1};
+				drv_cha_mst_byte_1                = {      8'hAA, 1'b1};
+	
+				drv_chb_mst_num_bytes             = 3'b001;
+				drv_chb_mst_repeatstart_after_byte= 3'b111;
+				drv_chb_mst_stop_after_byte       = 3'b000;
+				drv_chb_mst_byte_0                = {7'h40, 1'b1, 1'b1};
+
+				start_chb_mst();
+				start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				#5000;
+				
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				//stage B, check that after multi-master conflict normal traffic can resume
+				test_subtype = "i2c multi-master test1, stageB" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+								
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				init_drv_cha_slv_bytes();
+				copy_drv_cha_slv_bytes_to_chb();
+				drv_cha_slv_en = 0;
+				drv_chb_slv_en = 1;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b001;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b000;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {7'h2A, 1'b0, 1'b1};
+				
+				copy_drv_cha_mst_args_to_chb();
+				
+				start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+
+					32'd11 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b0, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+
+					32'd11 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {7'h2A, 1'b0, 1'b1} ),    
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				#5000;
+				
 				
 		end
 	endtask

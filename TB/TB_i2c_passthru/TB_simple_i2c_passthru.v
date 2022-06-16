@@ -18,7 +18,8 @@ module tb();
 	localparam NS_T_BUS_STUCK_MAX  =   200_000_000;
 	localparam NS_T_BUS_STUCK_MIN  =    25_000_000;
 	
-	localparam NS_T_HI_MAX      =  700000;
+	//localparam NS_T_HI_MAX      =  700000;
+	localparam NS_T_HI_MAX      =  100000;
 	localparam NS_T_HI_MIN      =   50000;
 	localparam NS_T_LOW_MIN     =    3500;
 
@@ -709,6 +710,19 @@ module tb();
 	endtask
 	
 	
+	task rst_all_slvs;
+		begin
+			drv_cha_slv_en = 1;
+			drv_chb_slv_en = 1;
+			#1;
+			drv_cha_slv_en = 0;
+			drv_chb_slv_en = 0;
+			#1;
+			
+		end
+	endtask
+	
+	
 	task start_cha_mst;
 		begin
 			drv_cha_mst_start = 1;
@@ -749,13 +763,13 @@ module tb();
 			
 			i2c_protocol_addr_w_nack_stop( "i2c test address only", 1'b0);
 			i2c_protocol_addr_w_nack_stop( "i2c test address only", 1'b1);
-			
+						
 			i2c_protocol_addr_r_ack_stop ( "i2c test address only", 1'b0);
 			i2c_protocol_addr_r_ack_stop ( "i2c test address only", 1'b1);
-			
+						
 			i2c_protocol_addr_w_1byte_data( "i2c test write data", 1'b0);
 			i2c_protocol_addr_w_1byte_data( "i2c test write data", 1'b1);
-			
+						
 			i2c_protocol_addr_w_2byte_data( "i2c test write data", 1'b0);
 			i2c_protocol_addr_w_2byte_data( "i2c test write data", 1'b1);
 			
@@ -779,16 +793,10 @@ module tb();
 			i2c_slave_same_side_as_mst( "i2c test slave same side master", 1'b0);
 			i2c_slave_same_side_as_mst( "i2c test slave same side master", 1'b1);
 			
-			//#10_000;
-			//i2c_protocol_basic_test_pass( 8'h00, 9'h00, 1'b0);
-			//#5000;
-			//i2c_protocol_basic_test_pass( 9'h00, 9'h00, 1'b1);
-			//i2c_protocol_basic_test_pass( 9'h55, 9'hAA, 1'b0);
-			//i2c_protocol_basic_test_pass( 9'h55, 9'hAA, 1'b1);
-			//i2c_protocol_basic_test_pass( 9'hAA, 9'h55, 1'b0);
-			//i2c_protocol_basic_test_pass( 9'hAA, 9'h55, 1'b1);
-			//i2c_protocol_basic_test_pass( 9'hFF, 9'hFF, 1'b0);
-			//i2c_protocol_basic_test_pass( 9'hFF, 9'hFF, 1'b1);
+			i2c_no_stop_and_other_channel_starts("i2c no-stop test", 1'b0);
+			i2c_no_stop_and_other_channel_starts("i2c no-stop test", 1'b1);
+
+
 
 		end
 	endtask
@@ -859,7 +867,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -901,6 +909,8 @@ module tb();
 		reg   [511:0] test_subtype;
 		reg   [  6:0] i2c_addr;
 		begin
+				//$display("Starting i2c_protocol_addr_w_nack_stop: %t", $realtime);
+				//#64;
 				mon_cha_test_type    = test_type   ;
 				mon_chb_test_type    = test_type   ;
 				
@@ -937,8 +947,9 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
-	
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
+				//$display("wait all idle done i2c_protocol_addr_w_nack_stop: %t", $realtime);
+
 				check_expctd_i2c_events( 
 					test_type,
 					{test_subtype[0 +: 480], " channel A"},
@@ -1140,7 +1151,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1230,7 +1241,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1321,7 +1332,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1412,7 +1423,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1510,7 +1521,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1615,7 +1626,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1712,7 +1723,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1799,7 +1810,7 @@ module tb();
 				start_chb_mst();
 				start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 				#5000;
 				
 				mon_cha_test_type    = test_type   ;
@@ -1836,7 +1847,7 @@ module tb();
 				
 				start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 	
 				check_expctd_i2c_events( 
 					test_type,
@@ -1927,7 +1938,7 @@ module tb();
 				if( en_chb_is_mst)   start_chb_mst();
 				else                 start_cha_mst();
 				
-				wait_all_idle(test_type, test_subtype, NS_T_HI_MAX);
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
 				
 				expctd_nack_cha = en_chb_is_mst ? 1'b1 : 1'b0;
 				expctd_nack_chb = en_chb_is_mst ? 1'b0 : 1'b1;
@@ -1961,6 +1972,172 @@ module tb();
 					mon_chb_events               //	.actual
 				);                               //);
 				#5000;
+				
+		end
+	endtask
+	
+	
+	
+	//do a transaction where master fails to stop,
+	//then wait for timeout and make sure the other channel can
+	//resume normal operation
+	task i2c_no_stop_and_other_channel_starts;
+		input [511:0] test_type;
+		input en_chb_is_mst;
+
+		reg   [511:0] test_subtype;
+		reg   [  6:0] i2c_addr;
+		reg   [  7:0] i2c_data;
+		begin
+				mon_cha_test_type    = test_type   ;
+				mon_chb_test_type    = test_type   ;
+				
+				test_subtype = "address, write mode,  ack, data, stop" ;
+				mon_cha_test_subtype = test_subtype;
+				mon_chb_test_subtype = test_subtype;
+				
+				i2c_addr = 7'h2A;
+				i2c_data = 8'h55;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				rst_all_slvs();
+				
+				init_drv_cha_slv_bytes();
+				drv_cha_slv_byte_0 = {8'hFF, 1'b0};
+				drv_cha_slv_byte_1 = {8'hFF, 1'b0};
+	
+				copy_drv_cha_slv_bytes_to_chb();
+				drv_cha_slv_en =  en_chb_is_mst;
+				drv_chb_slv_en = !en_chb_is_mst;
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b010;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b111;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {i2c_addr, 1'b0, 1'b1};
+				drv_cha_mst_byte_1                = {      i2c_data, 1'b1};
+
+				copy_drv_cha_mst_args_to_chb();
+				
+				if( en_chb_is_mst)   start_chb_mst();
+				else                 start_cha_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+					32'd19 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b0, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} )
+						//`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+
+					32'd19 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b0, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b0} )
+						//`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				//#5000;
+				
+				//wait for idle, then perform transaction from other side
+				#NS_T_HI_MAX;
+				
+				i2c_addr = 7'h55;
+				i2c_data = 8'hAA;
+				
+				//setup monitors
+				rst_all_mon();
+				mon_cha_en_timing_check = 1;
+				mon_chb_en_timing_check = 1;
+				
+				//setup slaves
+				init_drv_cha_slv_bytes();
+				drv_cha_slv_byte_0 = {   8'hFF, 1'b0};
+				drv_cha_slv_byte_1 = {i2c_data, 1'b1};
+				drv_cha_slv_byte_2 = {1'b1, 8'bxxxx_xxxx};
+
+	
+				copy_drv_cha_slv_bytes_to_chb();
+				drv_chb_slv_en =  en_chb_is_mst;
+				drv_cha_slv_en = !en_chb_is_mst;
+			
+				
+				//setup master
+				drv_cha_mst_scl_lo_timing          = 32'd5000;
+				drv_cha_mst_scl_hi_timing          = 32'd4700;
+				
+				drv_cha_mst_num_bytes             = 3'b010;
+				drv_cha_mst_repeatstart_after_byte= 3'b111;
+				drv_cha_mst_stop_after_byte       = 3'b001;
+				
+				init_drv_cha_mst_bytes();
+				drv_cha_mst_byte_0                = {i2c_addr, 1'b1, 1'b1};
+				drv_cha_mst_byte_1                = {         8'hFF, 1'b1};
+
+				copy_drv_cha_mst_args_to_chb();
+				
+				if( en_chb_is_mst)   start_cha_mst();
+				else                 start_chb_mst();
+				
+				wait_all_idle(test_type, test_subtype, NS_TB_NORM_TIMEOUT);
+	
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel A"},
+					32'd20 ,                     //	.num_expctd
+					mon_cha_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_cha_events               //	.actual
+				);                               //);
+				
+				check_expctd_i2c_events( 
+					test_type,
+					{test_subtype[0 +: 480], " channel B"},
+
+					32'd20 ,                     //	.num_expctd
+					mon_chb_num_events,          //	.num_actual
+					{                            //	.expctd({
+						`MON_EVENT_S,                                           
+						i2cbyte_to_i2c_event( {i2c_addr, 1'b1, 1'b0} ),
+						i2cbyte_to_i2c_event( {      i2c_data, 1'b1} ),
+						`MON_EVENT_P                                            
+					},                                                         
+					mon_chb_events               //	.actual
+				);                               //);
+				#5000;
+				
+				
+				
 				
 		end
 	endtask
@@ -2216,12 +2393,16 @@ module tb();
 		input realtime timeout_time;
 		
 		realtime start_time;
+		//reg [31:0] i;
 		begin
 			start_time = $realtime;
+			//i=0;
 			//while( (!all_idle(0)) && (time_elapsed( start_time) < NS_TB_LONG_TIMEOUT) ) begin
 			while( (!all_idle(0)) && (time_elapsed( start_time) < timeout_time) ) begin
-
+				
 				@(posedge i_clk);
+				//i = i+1'b1;
+				//if( 1000 == i ) $display("check wait_all_idle time elapsed: %t", time_elapsed( start_time));
 			end
 			if( !all_idle(0)) fail_tb_timeout(str_err, str_suberr);
 		end
@@ -2285,6 +2466,10 @@ module tb();
 			$display("    failure substype: %s", str_lalign(str_suberr) );
 			$display("    time            : %t", $realtime);
 			failed = 1;
+			
+			$display("------- Timeout occured waiting for some condition ------");
+			$display("------- testbench in unknown state, stop entire test ----");
+			$stop();
 		end
 	endtask
 	

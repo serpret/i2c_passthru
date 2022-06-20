@@ -218,6 +218,15 @@ module tb();
 	wire [31:0] mon_opt_cnt_chb_stuck    ;
 	
 	
+	// scl edge count monitors
+	
+	reg         mon_scl_edge_cha_rst;
+	wire [31:0] mon_scl_edge_cha_cnt;
+	
+	reg         mon_scl_edge_chb_rst;
+	wire [31:0] mon_scl_edge_chb_cnt;
+	
+	
 	`ifdef FAST_F_REF /////////////////////////////////
 		always #5          i_clk            = ~i_clk;        //period 10ns
 		always #50         f_ref_unsync     = ~f_ref_unsync; //period 100ns
@@ -447,6 +456,21 @@ module tb();
 	);
 	
 	
+	mon_posedge_cnt u_mon_scl_edge_cnt_cha(
+		.i_sig(cha_scl),
+		.i_rst(mon_scl_edge_cha_rst),
+		.o_cnt(mon_scl_edge_cha_cnt)
+	);
+	
+	
+	mon_posedge_cnt u_mon_scl_edge_cnt_chb(
+		.i_sig(chb_scl),
+		.i_rst(mon_scl_edge_chb_rst),
+		.o_cnt(mon_scl_edge_chb_cnt)
+	);
+	
+	
+	
 	// ========    SCL / SDA OPEN DRAIN LOGIC ====================================
 
 	//channel A  open-drain logic
@@ -511,6 +535,9 @@ module tb();
 			
 			mon_cha_en_timing_check = 0;
 			mon_chb_en_timing_check = 0;
+			
+			mon_scl_edge_cha_rst = 0;
+			mon_scl_edge_chb_rst = 0;
 			
 			init_drv_cha_mst();
 			init_drv_chb_mst();
@@ -723,6 +750,18 @@ module tb();
 	endtask
 	
 	
+	task rst_edge_cnt_mon;
+		begin
+			mon_scl_edge_cha_rst = 1;
+			mon_scl_edge_chb_rst = 1;
+			#1;
+			
+			mon_scl_edge_cha_rst = 0;
+			mon_scl_edge_chb_rst = 0;
+		end
+	endtask
+	
+	
 	task start_cha_mst;
 		begin
 			drv_cha_mst_start = 1;
@@ -795,6 +834,11 @@ module tb();
 			
 			i2c_no_stop_and_other_channel_starts("i2c no-stop test", 1'b0);
 			i2c_no_stop_and_other_channel_starts("i2c no-stop test", 1'b1);
+			
+			i2c_sda_stuck_low("i2c sda stuck low test", 1'b0);
+			i2c_sda_stuck_low("i2c sda stuck low test", 1'b1);
+
+			
 
 
 
@@ -1305,6 +1349,8 @@ module tb();
 				mon_chb_en_timing_check = 1;
 				
 				//setup slaves
+				rst_all_slvs();
+				
 				init_drv_cha_slv_bytes();
 				drv_cha_slv_byte_0 = {   8'hFF, 1'b0};
 				drv_cha_slv_byte_1 = {i2c_data, 1'b1};
@@ -2145,6 +2191,77 @@ module tb();
 	
 	
 	
+	
+	task i2c_sda_stuck_low;
+		input [511:0] test_type;
+		input en_chb_is_mst;
+
+		reg   [511:0] test_subtype;
+		//reg     [7:0] num_scl_edges_detected;
+		realtime      start_time;
+
+		begin
+		
+			//disable slaves
+			drv_chb_slv_en = 0;
+			drv_cha_slv_en = 0;
+			
+
+			mon_cha_test_type    = test_type   ;
+			mon_chb_test_type    = test_type   ;
+			
+			if( en_chb_is_mst) test_subtype = "i2c sda hold low test, chb master" ;
+			else               test_subtype = "i2c sda hold low test, cha master" ;
+
+			mon_cha_test_subtype = test_subtype;
+			mon_chb_test_subtype = test_subtype;
+			
+			//setup monitors
+			rst_all_mon();
+			mon_cha_en_timing_check = 1;
+			mon_chb_en_timing_check = 1;
+
+				
+			if(en_chb_is_mst) force chb_sda = 1'b0;
+			else              force cha_sda = 1'b0;
+			
+			start_time = $realtime;
+			rst_edge_cnt_mon();
+			//while( num_scl_edges_detected < 3 && (time_elapsed( start_time) < NS_T_LOW_MAX)) begin
+			
+			if( en_chb_is_mst) begin
+				while( mon_scl_edge_chb_cnt < 3 && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX)) begin
+					@(posedge i_clk);
+				end
+				
+				if( mon_scl_edge_chb_cnt < 3 ) begin
+					fail_general( test_type, test_subtype);
+					release chb_sda;
+					//return; //systemverilog?
+				end
+				release chb_sda;
+			end
+			else begin
+				while( mon_scl_edge_cha_cnt < 3 && (time_elapsed( start_time) < NS_T_BUS_STUCK_MAX)) begin
+					@(posedge i_clk);
+				end
+				
+				if( mon_scl_edge_cha_cnt < 3 ) begin
+					fail_general( test_type, test_subtype);
+					release cha_sda;
+					//return; //systemverilog?
+				end
+				release cha_sda;
+			end
+			
+			#NS_T_HI_MAX;
+			
+			i2c_protocol_addr_r_1byte_data( "i2c read test after sda_stuck_low", en_chb_is_mst);
+		
+		end
+	endtask
+	
+	
 	//task i2c_protocol_basic_test_pass;
 	//	input [7:0] mst_dat;
 	//	input [7:0] slv_dat;
@@ -2443,17 +2560,17 @@ module tb();
 	endtask
 	
 	
-	//task fail_general;
-	//	input [511:0] str_err;
-	//	input [511:0] str_suberr;
-	//	begin
-	//		$display("-------  Failed test  ------", str_err);
-	//		$display("    failure type    : %s", str_lalign(str_err   ) );
-	//		$display("    failure substype: %s", str_lalign(str_suberr) );
-	//		$display("    time            : %t", $realtime);
-	//		failed = 1;
-	//	end
-	//endtask
+	task fail_general;
+		input [511:0] str_err;
+		input [511:0] str_suberr;
+		begin
+			$display("-------  Failed test  ------", str_err);
+			$display("    failure type    : %s", str_lalign(str_err   ) );
+			$display("    failure substype: %s", str_lalign(str_suberr) );
+			$display("    time            : %t", $realtime);
+			failed = 1;
+		end
+	endtask
 	
 	
 	task fail_tb_timeout;

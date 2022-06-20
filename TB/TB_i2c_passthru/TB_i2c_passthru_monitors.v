@@ -244,4 +244,23 @@ module mon_passthru_optional_outputs(
 endmodule
 
 
+
+module mon_posedge_cnt (
+	input i_sig,
+	input i_rst,
+	
+	output reg [31:0] o_cnt
+);
+
+	always @(posedge i_rst) begin
+		o_cnt = 0;
+	end
+	
+	always @(posedge i_sig) begin
+		o_cnt = o_cnt + 1'b1;
+	end
+
+endmodule
+
+
 	

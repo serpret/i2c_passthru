@@ -23,7 +23,7 @@
 
 
 module i2c_passthru #(
-
+	parameter TEST_BENCH_MODE = 0, //set 1 for testbench to inialize registers
 
 	//enable 2 flip flop asynchronous signal filtering
 	//to avoid metastability.  Add 2 clock cycle delay
@@ -502,6 +502,7 @@ module i2c_passthru #(
 	//i2c input filters 
 	// (glitch suppresion, and start stop detection more reliable)
 	i2c_passthru_infilter #(
+		.TEST_BENCH_MODE    (TEST_BENCH_MODE            ),
 		.EN_2FF_SYNC        (INFILTER_EN_2FF_SYNC       ),
 		.NUM_CLKS_WIDTH     (INFILTER_NUM_CLKS_WIDTH    ),
 		.NUM_CLKS_HI2LO_SDA (INFILTER_NUM_CLKS_HI2LO_SDA),
@@ -520,6 +521,7 @@ module i2c_passthru #(
 	
 	
 	i2c_passthru_infilter #(
+		.TEST_BENCH_MODE    (TEST_BENCH_MODE            ),
 		.EN_2FF_SYNC        (INFILTER_EN_2FF_SYNC       ),
 		.NUM_CLKS_WIDTH     (INFILTER_NUM_CLKS_WIDTH    ),
 		.NUM_CLKS_HI2LO_SDA (INFILTER_NUM_CLKS_HI2LO_SDA),
@@ -540,6 +542,7 @@ module i2c_passthru #(
 
 	
 	i2c_passthru_idle_stuck_recover #(
+		.TEST_BENCH_MODE             (TEST_BENCH_MODE             ),
 		.F_REF_T_LOW                 (F_REF_T_LOW                 ),
 		.F_REF_T_HI                  (F_REF_T_HI                  ),
 		.F_REF_SLOW_T_STUCK_MAX      (F_REF_SLOW_T_STUCK_MAX      ),

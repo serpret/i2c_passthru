@@ -1,6 +1,8 @@
 //`timescale 1ns/100ps
 `include "timescale.v"
 
+//`define TEST_BENCH
+
 `define MON_EVENT_0 2'b00
 `define MON_EVENT_1 2'b01
 `define MON_EVENT_P 2'b10
@@ -251,8 +253,12 @@ module tb();
 	// ========    UNIT UNDER TEST ====================================
 	// ========    UNIT UNDER TEST ====================================
 	// ========    UNIT UNDER TEST ====================================
+	
+	//`define TEST_BENCH
+
 	i2c_passthru #(
 	
+		.TEST_BENCH_MODE              (1                           ),
 		.INFILTER_EN_2FF_SYNC         (INFILTER_EN_2FF_SYNC        ),
 		.INFILTER_NUM_CLKS_WIDTH      (INFILTER_NUM_CLKS_WIDTH     ),
 		.INFILTER_NUM_CLKS_HI2LO_SDA  (INFILTER_NUM_CLKS_HI2LO_SDA ),

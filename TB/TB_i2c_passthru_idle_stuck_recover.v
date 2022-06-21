@@ -83,7 +83,7 @@ module tb();
 
 	
 	i2c_passthru_idle_stuck_recover #(
-	
+		.TEST_BENCH_MODE             (1'b1                         ),
 		.F_REF_T_LOW                 (F_REF_T_LOW                  ),
 		.F_REF_T_HI                  (F_REF_T_HI                   ),
 		.F_REF_SLOW_T_STUCK_MAX      (F_REF_SLOW_T_STUCK_MAX       ),

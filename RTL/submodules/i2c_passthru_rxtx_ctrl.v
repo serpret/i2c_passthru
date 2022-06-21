@@ -90,7 +90,11 @@ module i2c_passthru_rxtx_ctrl(
 	assign cha_start      =   i_cha_scl    &  cha_negedge_sda;
 	assign chb_start      =   i_chb_scl    &  chb_negedge_sda;
 
-	assign nxt_slv_on_mst_side = slv_on_mst_side | i_tx_slv_on_mst_ch;
+	//assign nxt_slv_on_mst_side = slv_on_mst_side | i_tx_slv_on_mst_ch;
+	
+	always @(*) begin
+		nxt_slv_on_mst_side = slv_on_mst_side | i_tx_slv_on_mst_ch;
+	end
 
 	always @(*) begin
 		case( {slv_on_mst_side, bit_willbe_ack, read_mode, ack_failed} )

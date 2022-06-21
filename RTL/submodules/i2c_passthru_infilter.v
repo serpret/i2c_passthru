@@ -26,6 +26,8 @@
 
 
 module i2c_passthru_infilter #(
+	parameter TEST_BENCH_MODE = 0, //set 1 for testbench to inialize registers
+
 
 	//enable 2 flip flop asynchronous signal filtering
 	//to avoid metastability.  Add 2 clock cycle delay
@@ -71,13 +73,15 @@ module i2c_passthru_infilter #(
 	
 	reg out_sda ;
 	reg out_scl ;
+		
+	if( TEST_BENCH_MODE) begin
 	
-	//for simulation
-	initial begin
-		sda_cnt = 0;
-		scl_cnt = 0;
-		out_sda = 0;
-		out_scl = 0;
+		initial begin
+			sda_cnt = 0;
+			scl_cnt = 0;
+			out_sda = 0;
+			out_scl = 0;
+		end
 	end
 	
 	reg i_scl_2ff;

@@ -28,6 +28,9 @@
 //this module will attempt to recover the bus.
 module i2c_passthru_idle_stuck_recover #(
 
+	parameter TEST_BENCH_MODE = 0, //set 1 for testbench to inialize registers
+
+
 	//number of periods of i_f_ref required for smbus timing
 	//example: for t_r=1us ( rise time) and i_f_ref is 8mhz
 	// 8mhz * 1us = 8
@@ -86,7 +89,7 @@ module i2c_passthru_idle_stuck_recover #(
 	reg [WIDTH_F_REF_SLOW_T_STUCK_MAX-1:0] timer_stuck, nxt_timer_stuck;
 	
 	wire timer_thi_rst;
-	reg timer_thi_tc;
+	wire timer_thi_tc;
 	reg timer_tlow_rst;
 	wire timer_tlow_tc;
 	wire timer_stuck_rst;
@@ -110,7 +113,7 @@ module i2c_passthru_idle_stuck_recover #(
 	wire pulse_f_ref;
 	wire pulse_f_ref_slow;
 	
-	reg nxt_stuck;
+	//reg nxt_stuck;
 	
 	wire negedge_sda;
 	wire posedge_sda;
@@ -120,12 +123,13 @@ module i2c_passthru_idle_stuck_recover #(
 	wire stop;
 	
 	
-	//for simulation
-	initial begin
-		timer_thi   = -1;
-		timer_tlow  = -1;
-		timer_stuck = -1;
+	if( TEST_BENCH_MODE ) begin
 
+		initial begin
+			timer_thi   = -1;
+			timer_tlow  = -1;
+			timer_stuck = -1;
+		end
 	end
 	
 	assign negedge_sda =  prev_sda && ~i_sda;
